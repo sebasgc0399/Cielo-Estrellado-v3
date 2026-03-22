@@ -17,7 +17,9 @@
   - `components/` — solo presentacion e interaccion
   - `pages/` — composicion de componentes + routing
   - `handlers/` (functions) — logica de negocio del backend
-- **CSS plano.** Sin frameworks CSS, sin CSS-in-JS. Archivos `.css` con variables de design tokens. Un archivo por componente si es necesario.
+- **Tailwind CSS + shadcn/ui.** Utility-first con componentes de shadcn. Magic UI para animaciones premium.
+  Design tokens via CSS custom properties en globals.css + extension en tailwind.config.
+  Objetivo: diseno unico y premium, nunca generico.
 - **Consistencia de naming:**
   - Archivos: `PascalCase.tsx` para componentes, `camelCase.ts` para todo lo demas
   - Funciones/variables: `camelCase`
