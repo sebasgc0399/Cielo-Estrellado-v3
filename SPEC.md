@@ -125,7 +125,7 @@ cielo-estrellado-v5/
 
 3. **Reads directos desde cliente.** Las reglas de Firestore ya permiten lectura de `skies/{skyId}/stars` a miembros activos. El SPA usa `onSnapshot` directo para realtime. Solo writes van por Cloud Functions.
 
-4. **Functions independientes.** Cada endpoint es una Cloud Function standalone (no Express router). Esto minimiza cold starts y permite escalar cada funcion por separado.
+4. **Function unica con router.** Todos los endpoints se sirven desde una sola Cloud Function (`api`) con un router interno que despacha por path + metodo HTTP. Los handlers viven en archivos separados pero se exportan como una sola function. Firebase Hosting reescribe `/api/**` a esta function.
 
 ---
 
@@ -607,7 +607,7 @@ type UserStar = {
 
 ## 9. API — Cloud Functions v2
 
-Todos los endpoints son Cloud Functions v2 gen2 HTTP. Auth via header `Authorization: Bearer <idToken>`.
+Todos los endpoints se sirven desde UNA sola Cloud Function v2 gen2 (`api`) con un router interno que despacha por path + metodo HTTP. Auth via header `Authorization: Bearer <idToken>`. Firebase Hosting reescribe `/api/**` a esta function.
 
 ### 9.1 Tabla de endpoints
 
@@ -646,12 +646,12 @@ Todos los endpoints son Cloud Functions v2 gen2 HTTP. Auth via header `Authoriza
 
 ### 9.3 API client (frontend)
 
-```typescript
-const FUNCTIONS_BASE_URL = import.meta.env.VITE_FUNCTIONS_URL
+El frontend usa paths relativos (`/api/skies`, `/api/userSync`, etc.). En produccion, Firebase Hosting reescribe `/api/**` a la Cloud Function. En dev local, Vite proxy redirige `/api` a produccion.
 
+```typescript
 async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = await auth.currentUser?.getIdToken()
-  const res = await fetch(`${FUNCTIONS_BASE_URL}${path}`, {
+  const res = await fetch(path, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -718,8 +718,9 @@ VITE_FIREBASE_PROJECT_ID=masmelito-f209c
 VITE_FIREBASE_STORAGE_BUCKET=
 VITE_FIREBASE_MESSAGING_SENDER_ID=
 VITE_FIREBASE_APP_ID=
-VITE_FUNCTIONS_URL=              # URL base de Cloud Functions
 ```
+
+No se necesita URL de Cloud Functions — el frontend usa paths relativos y Firebase Hosting reescribe `/api/**`.
 
 **Cloud Functions:**
 ```env

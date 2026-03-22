@@ -66,16 +66,16 @@ Formato: que se cambia, por que, que alternativas se descartaron, que se rompe s
 
 ```bash
 # Frontend
-cd frontend && npm run dev          # Dev server
+cd frontend && npm run dev          # Dev server (proxy /api → produccion)
 cd frontend && npm run build        # Build produccion
 
 # Functions
 cd functions && npm run build       # Compilar TypeScript
-cd functions && npm run serve       # Emulador local
 
 # Deploy
-firebase deploy --only functions
-firebase deploy --only hosting,firestore,storage
+cd functions && npm run build && cd .. && firebase deploy --only functions
+cd frontend && npm run build && cd .. && firebase deploy --only hosting
+firebase deploy                     # Todo junto
 ```
 
 ## Especificacion
