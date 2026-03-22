@@ -1,5 +1,5 @@
-import { onRequest } from 'firebase-functions/v2/https'
-import { handleCors } from '../middleware/cors.js'
+import type { Request } from 'firebase-functions/v2/https'
+import type { Response } from 'express'
 import { authenticateRequest } from '../middleware/auth.js'
 import { db } from '../lib/firebaseAdmin.js'
 import { createInvite } from '../lib/createInvite.js'
@@ -19,20 +19,11 @@ async function requireOwner(skyId: string, uid: string): Promise<MemberRecord | 
   return member
 }
 
-export const createInviteHandler = onRequest(async (req, res) => {
-  if (handleCors(req, res)) return
-
+export async function createInviteHandler(req: Request, res: Response): Promise<void> {
   try {
     const decoded = await authenticateRequest(req)
 
-    // Extract skyId from path: /{skyId}
-    const segments = req.path.split('/').filter(Boolean)
-    const skyId = segments[0]
-
-    if (!skyId) {
-      res.status(400).json({ error: 'skyId es obligatorio' })
-      return
-    }
+    const { skyId } = req.routeParams
 
     const member = await requireOwner(skyId, decoded.uid)
     if (!member) {
@@ -57,22 +48,13 @@ export const createInviteHandler = onRequest(async (req, res) => {
     console.error('Invite creation failed:', error)
     res.status(500).json({ error: 'Error interno al crear la invitación' })
   }
-})
+}
 
-export const listInvites = onRequest(async (req, res) => {
-  if (handleCors(req, res)) return
-
+export async function listInvites(req: Request, res: Response): Promise<void> {
   try {
     const decoded = await authenticateRequest(req)
 
-    // Extract skyId from path: /{skyId}
-    const segments = req.path.split('/').filter(Boolean)
-    const skyId = segments[0]
-
-    if (!skyId) {
-      res.status(400).json({ error: 'skyId es obligatorio' })
-      return
-    }
+    const { skyId } = req.routeParams
 
     const member = await requireOwner(skyId, decoded.uid)
     if (!member) {
@@ -109,23 +91,13 @@ export const listInvites = onRequest(async (req, res) => {
     console.error('Invite list failed:', error)
     res.status(500).json({ error: 'Error interno al listar invitaciones' })
   }
-})
+}
 
-export const revokeInviteHandler = onRequest(async (req, res) => {
-  if (handleCors(req, res)) return
-
+export async function revokeInviteHandler(req: Request, res: Response): Promise<void> {
   try {
     const decoded = await authenticateRequest(req)
 
-    // Extract skyId and inviteId from path: /{skyId}/{inviteId}
-    const segments = req.path.split('/').filter(Boolean)
-    const skyId = segments[0]
-    const inviteId = segments[1]
-
-    if (!skyId || !inviteId) {
-      res.status(400).json({ error: 'skyId e inviteId son obligatorios' })
-      return
-    }
+    const { skyId, inviteId } = req.routeParams
 
     const memberDoc = await db
       .collection('skies')
@@ -169,4 +141,4 @@ export const revokeInviteHandler = onRequest(async (req, res) => {
     console.error('Revoke invite failed:', error)
     res.status(500).json({ error: 'Error interno al revocar la invitación' })
   }
-})
+}

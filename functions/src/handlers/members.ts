@@ -1,23 +1,14 @@
-import { onRequest } from 'firebase-functions/v2/https'
-import { handleCors } from '../middleware/cors.js'
+import type { Request } from 'firebase-functions/v2/https'
+import type { Response } from 'express'
 import { authenticateRequest } from '../middleware/auth.js'
 import { db } from '../lib/firebaseAdmin.js'
 import type { MemberRecord, MemberRole, UserRecord, IsoDateString } from '../domain/contracts.js'
 
-export const listMembers = onRequest(async (req, res) => {
-  if (handleCors(req, res)) return
-
+export async function listMembers(req: Request, res: Response): Promise<void> {
   try {
     const decoded = await authenticateRequest(req)
 
-    // Extract skyId from path: /{skyId}
-    const segments = req.path.split('/').filter(Boolean)
-    const skyId = segments[0]
-
-    if (!skyId) {
-      res.status(400).json({ error: 'skyId es obligatorio' })
-      return
-    }
+    const { skyId } = req.routeParams
 
     const memberDoc = await db
       .collection('skies')
@@ -81,4 +72,4 @@ export const listMembers = onRequest(async (req, res) => {
     console.error('Members list failed:', error)
     res.status(500).json({ error: 'Error interno al listar miembros' })
   }
-})
+}

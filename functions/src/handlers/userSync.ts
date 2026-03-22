@@ -1,12 +1,10 @@
-import { onRequest } from 'firebase-functions/v2/https'
-import { handleCors } from '../middleware/cors.js'
+import type { Request } from 'firebase-functions/v2/https'
+import type { Response } from 'express'
 import { authenticateRequest } from '../middleware/auth.js'
 import { auth, db } from '../lib/firebaseAdmin.js'
 import type { UserRecord } from '../domain/contracts.js'
 
-export const userSync = onRequest(async (req, res) => {
-  if (handleCors(req, res)) return
-
+export async function userSync(req: Request, res: Response): Promise<void> {
   try {
     const decoded = await authenticateRequest(req)
     const firebaseUser = await auth.getUser(decoded.uid)
@@ -54,4 +52,4 @@ export const userSync = onRequest(async (req, res) => {
     console.error('User sync failed:', error)
     res.status(500).json({ error: 'Error interno al sincronizar usuario' })
   }
-})
+}

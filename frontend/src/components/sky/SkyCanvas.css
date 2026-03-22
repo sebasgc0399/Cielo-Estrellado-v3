@@ -12,3 +12,11 @@
   height: 100%;
   pointer-events: none;
 }
+
+.sky-canvas[data-hovering-star="true"]:not([data-dragging="true"]) {
+  cursor: grab;
+}
+
+.sky-canvas[data-dragging="true"] {
+  cursor: grabbing !important;
+}

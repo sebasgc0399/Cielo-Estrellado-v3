@@ -1,24 +1,15 @@
 import { createHash } from 'node:crypto'
-import { onRequest } from 'firebase-functions/v2/https'
-import { handleCors } from '../middleware/cors.js'
+import type { Request } from 'firebase-functions/v2/https'
+import type { Response } from 'express'
 import { authenticateRequest } from '../middleware/auth.js'
 import { db } from '../lib/firebaseAdmin.js'
 import { findInviteIdByToken } from '../lib/findInviteIdByToken.js'
 import { acceptInvite, InviteError } from '../lib/acceptInvite.js'
 import type { InviteRecord, SkyRecord } from '../domain/contracts.js'
 
-export const previewInvite = onRequest(async (req, res) => {
-  if (handleCors(req, res)) return
-
+export async function previewInvite(req: Request, res: Response): Promise<void> {
   try {
-    // Extract token from path: /{token}
-    const segments = req.path.split('/').filter(Boolean)
-    const token = segments[0]
-
-    if (!token) {
-      res.status(200).json({ valid: false, reason: 'not_found' })
-      return
-    }
+    const { token } = req.routeParams
 
     // Inline getInviteByToken logic
     const tokenHash = createHash('sha256').update(token).digest('hex')
@@ -66,22 +57,13 @@ export const previewInvite = onRequest(async (req, res) => {
     console.error('Invite preview failed:', error)
     res.status(200).json({ valid: false, reason: 'not_found' })
   }
-})
+}
 
-export const acceptInviteHandler = onRequest(async (req, res) => {
-  if (handleCors(req, res)) return
-
+export async function acceptInviteHandler(req: Request, res: Response): Promise<void> {
   try {
     const decoded = await authenticateRequest(req)
 
-    // Extract token from path: /{token}
-    const segments = req.path.split('/').filter(Boolean)
-    const token = segments[0]
-
-    if (!token) {
-      res.status(404).json({ error: 'Invitación no encontrada' })
-      return
-    }
+    const { token } = req.routeParams
 
     const inviteId = await findInviteIdByToken(token)
     if (!inviteId) {
@@ -117,4 +99,4 @@ export const acceptInviteHandler = onRequest(async (req, res) => {
     console.error('Accept invite failed:', error)
     res.status(500).json({ error: 'Error interno al aceptar la invitación' })
   }
-})
+}

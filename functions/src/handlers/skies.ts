@@ -1,5 +1,5 @@
-import { onRequest } from 'firebase-functions/v2/https'
-import { handleCors } from '../middleware/cors.js'
+import type { Request } from 'firebase-functions/v2/https'
+import type { Response } from 'express'
 import { authenticateRequest } from '../middleware/auth.js'
 import { db } from '../lib/firebaseAdmin.js'
 import { getSkyWithAccess } from '../lib/getSkyWithAccess.js'
@@ -7,9 +7,7 @@ import { SKY_TITLE_MAX_LENGTH } from '../domain/policies.js'
 import type { SkyRecord, MemberRecord, MemberRole } from '../domain/contracts.js'
 import { DEFAULT_SKY_PERSONALIZATION } from '../domain/contracts.js'
 
-export const getUserSkies = onRequest(async (req, res) => {
-  if (handleCors(req, res)) return
-
+export async function getUserSkies(req: Request, res: Response): Promise<void> {
   try {
     const decoded = await authenticateRequest(req)
 
@@ -60,11 +58,9 @@ export const getUserSkies = onRequest(async (req, res) => {
     console.error('getUserSkies failed:', error)
     res.status(500).json({ error: 'Error interno al listar cielos' })
   }
-})
+}
 
-export const createSky = onRequest(async (req, res) => {
-  if (handleCors(req, res)) return
-
+export async function createSky(req: Request, res: Response): Promise<void> {
   try {
     const decoded = await authenticateRequest(req)
 
@@ -113,22 +109,13 @@ export const createSky = onRequest(async (req, res) => {
     console.error('Sky creation failed:', error)
     res.status(500).json({ error: 'Error interno al crear el cielo' })
   }
-})
+}
 
-export const getSky = onRequest(async (req, res) => {
-  if (handleCors(req, res)) return
-
+export async function getSky(req: Request, res: Response): Promise<void> {
   try {
     const decoded = await authenticateRequest(req)
 
-    // Path: /skyId or similar — extract last segment
-    const segments = req.path.split('/').filter(Boolean)
-    const skyId = segments[segments.length - 1]
-
-    if (!skyId) {
-      res.status(400).json({ error: 'skyId es obligatorio' })
-      return
-    }
+    const { skyId } = req.routeParams
 
     const access = await getSkyWithAccess(skyId, decoded.uid)
 
@@ -149,4 +136,4 @@ export const getSky = onRequest(async (req, res) => {
     console.error('getSky failed:', error)
     res.status(500).json({ error: 'Error interno al obtener el cielo' })
   }
-})
+}
