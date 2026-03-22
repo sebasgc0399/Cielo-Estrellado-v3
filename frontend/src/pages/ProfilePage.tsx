@@ -8,16 +8,7 @@ import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
 import { ArrowLeft, LogOut } from 'lucide-react'
-
-function getInitials(name: string | null, email: string | null): string {
-  if (name) {
-    const parts = name.split(' ').filter(Boolean)
-    return parts.length >= 2
-      ? (parts[0][0] + parts[1][0]).toUpperCase()
-      : name.slice(0, 2).toUpperCase()
-  }
-  return email ? email[0].toUpperCase() : '?'
-}
+import { getInitials } from '@/lib/getInitials'
 
 export function ProfilePage() {
   const { user, loading } = useRequireAuth()

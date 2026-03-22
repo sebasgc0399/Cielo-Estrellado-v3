@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router'
 import { useRequireAuth } from '@/lib/auth/useRequireAuth'
 import { useSkyData } from '@/hooks/useSkyData'
@@ -7,7 +7,8 @@ import { SkyCanvas } from '@/components/sky/SkyCanvas'
 import { FloatingToolbar } from '@/components/sky/FloatingToolbar'
 import { StarOverlay } from '@/components/sky/StarOverlay'
 import { StarFormSheet } from '@/components/sky/StarFormSheet'
-import { BottomSheet } from '@/components/ui/BottomSheet'
+import { SkySettingsSheet } from '@/components/sky/SkySettingsSheet'
+import { CollaboratorsSheet } from '@/components/sky/CollaboratorsSheet'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
 import { BlurFade } from '@/components/ui/blur-fade'
 import { Button } from '@/components/ui/button'
@@ -31,17 +32,20 @@ export function SkyPage() {
   const [formPosition, setFormPosition] = useState<{ x: number; y: number } | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [collaboratorsOpen, setCollaboratorsOpen] = useState(false)
+  const [skyConfig, setSkyConfig] = useState<SkyConfig | undefined>(undefined)
 
-  // Build SkyConfig from personalization
-  const skyConfig: SkyConfig | undefined = sky
-    ? {
+  // Initialize SkyConfig from personalization when sky loads
+  useEffect(() => {
+    if (sky) {
+      setSkyConfig(prev => ({
         twinkle: sky.personalization.twinkleEnabled,
         nebula: sky.personalization.nebulaEnabled,
         shootingStars: sky.personalization.shootingStarsEnabled,
-        quality: 'high',
-        motion: 'mouse',
-      }
-    : undefined
+        quality: prev?.quality ?? 'high',
+        motion: prev?.motion ?? 'mouse',
+      }))
+    }
+  }, [sky])
 
   // --- Handlers ---
 
@@ -185,31 +189,23 @@ export function SkyPage() {
         />
       )}
 
-      {/* Settings placeholder */}
-      <BottomSheet
+      {/* Sky settings */}
+      <SkySettingsSheet
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
-        title="Configuración"
-      >
-        <div className="px-1 pb-6 pt-2">
-          <p className="text-sm font-light" style={{ color: 'var(--text-muted)' }}>
-            Próximamente — personalización del cielo.
-          </p>
-        </div>
-      </BottomSheet>
+        sky={sky}
+        skyId={skyId!}
+        onConfigChange={setSkyConfig}
+      />
 
-      {/* Collaborators placeholder */}
-      <BottomSheet
-        open={collaboratorsOpen}
-        onOpenChange={setCollaboratorsOpen}
-        title="Colaboradores"
-      >
-        <div className="px-1 pb-6 pt-2">
-          <p className="text-sm font-light" style={{ color: 'var(--text-muted)' }}>
-            Próximamente — invita a otros a tu cielo.
-          </p>
-        </div>
-      </BottomSheet>
+      {/* Collaborators (owner only) */}
+      {role === 'owner' && (
+        <CollaboratorsSheet
+          open={collaboratorsOpen}
+          onOpenChange={setCollaboratorsOpen}
+          skyId={skyId!}
+        />
+      )}
     </div>
   )
 }

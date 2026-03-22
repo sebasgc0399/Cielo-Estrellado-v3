@@ -2,7 +2,7 @@ import { onRequest } from 'firebase-functions/v2/https'
 import { handleCors } from './middleware/cors.js'
 import { createRouter } from './router.js'
 import { userSync } from './handlers/userSync.js'
-import { getUserSkies, createSky, getSky } from './handlers/skies.js'
+import { getUserSkies, createSky, getSky, updateSky } from './handlers/skies.js'
 import { createStar, updateStar, deleteStar } from './handlers/stars.js'
 import { createInviteHandler, listInvites, revokeInviteHandler } from './handlers/invites.js'
 import { previewInvite, acceptInviteHandler } from './handlers/invitePublic.js'
@@ -13,6 +13,7 @@ const router = createRouter([
   { method: 'GET', pattern: '/skies', handler: getUserSkies },
   { method: 'POST', pattern: '/skies', handler: createSky },
   { method: 'GET', pattern: '/skies/:skyId', handler: getSky },
+  { method: 'PATCH', pattern: '/skies/:skyId', handler: updateSky },
   { method: 'POST', pattern: '/skies/:skyId/stars', handler: createStar },
   { method: 'PATCH', pattern: '/skies/:skyId/stars/:starId', handler: updateStar },
   { method: 'DELETE', pattern: '/skies/:skyId/stars/:starId', handler: deleteStar },

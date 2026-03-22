@@ -14,6 +14,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
 import { toast } from 'sonner'
 import { Plus, Sparkles } from 'lucide-react'
+import { getInitials } from '@/lib/getInitials'
 import type { SkyRecord, MemberRole } from '@/domain/contracts'
 import { SKY_TITLE_MAX_LENGTH } from '@/domain/policies'
 
@@ -32,16 +33,6 @@ function formatDate(iso: string): string {
     month: 'short',
     year: 'numeric',
   })
-}
-
-function getInitials(name: string | null, email: string | null): string {
-  if (name) {
-    const parts = name.split(' ').filter(Boolean)
-    return parts.length >= 2
-      ? (parts[0][0] + parts[1][0]).toUpperCase()
-      : name.slice(0, 2).toUpperCase()
-  }
-  return email ? email[0].toUpperCase() : '?'
 }
 
 export function SkiesPage() {
