@@ -12,8 +12,16 @@ import { Label } from '@/components/ui/label'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { Plus, Sparkles } from 'lucide-react'
+import { Plus, Sparkles, Pencil, Trash2 } from 'lucide-react'
 import { getInitials } from '@/lib/getInitials'
 import type { SkyRecord, MemberRole } from '@/domain/contracts'
 import { SKY_TITLE_MAX_LENGTH } from '@/domain/policies'
@@ -45,6 +53,16 @@ export function SkiesPage() {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [creating, setCreating] = useState(false)
+
+  // Edit state
+  const [editEntry, setEditEntry] = useState<SkyEntry | null>(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  // Delete state
+  const [deleteEntry, setDeleteEntry] = useState<SkyEntry | null>(null)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -85,6 +103,59 @@ export function SkiesPage() {
     } finally {
       setCreating(false)
     }
+  }
+
+  const handleEdit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!editEntry) return
+    const title = editTitle.trim()
+    if (!title) return
+
+    setSaving(true)
+    try {
+      await api(`/api/skies/${editEntry.skyId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ title }),
+      })
+      setSkies(prev => prev.map(s =>
+        s.skyId === editEntry.skyId
+          ? { ...s, sky: { ...s.sky, title } }
+          : s
+      ))
+      toast.success('Nombre actualizado')
+      setEditEntry(null)
+    } catch {
+      toast.error('Error al actualizar el nombre')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!deleteEntry) return
+
+    setDeleting(true)
+    try {
+      await api(`/api/skies/${deleteEntry.skyId}`, { method: 'DELETE' })
+      setSkies(prev => prev.filter(s => s.skyId !== deleteEntry.skyId))
+      toast.success('Cielo eliminado')
+      setDeleteEntry(null)
+      setDeleteConfirmText('')
+    } catch {
+      toast.error('Error al eliminar el cielo')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const openEdit = (entry: SkyEntry) => {
+    setEditTitle(entry.sky.title)
+    setEditEntry(entry)
+  }
+
+  const openDelete = (entry: SkyEntry) => {
+    setDeleteConfirmText('')
+    setDeleteEntry(entry)
   }
 
   const handleSignOut = async () => {
@@ -218,12 +289,32 @@ export function SkiesPage() {
                           {ROLE_LABELS[entry.role]}
                         </Badge>
                       </div>
-                      <p
-                        className="text-xs font-light tracking-wide"
-                        style={{ color: 'var(--text-muted)' }}
-                      >
-                        {formatDate(entry.sky.createdAt)}
-                      </p>
+                      <div className="flex items-center justify-between">
+                        <p
+                          className="text-xs font-light tracking-wide"
+                          style={{ color: 'var(--text-muted)' }}
+                        >
+                          {formatDate(entry.sky.createdAt)}
+                        </p>
+                        {entry.role === 'owner' && (
+                          <div className="flex gap-1">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); openEdit(entry) }}
+                              className="rounded-md p-1.5 transition-colors hover:bg-white/[0.08]"
+                              aria-label="Editar nombre"
+                            >
+                              <Pencil className="h-3.5 w-3.5" style={{ color: 'var(--text-muted)' }} />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); openDelete(entry) }}
+                              className="rounded-md p-1.5 transition-colors hover:bg-red-400/10"
+                              aria-label="Eliminar cielo"
+                            >
+                              <Trash2 className="h-3.5 w-3.5 text-red-400/70" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </button>
                 </BlurFade>
@@ -292,6 +383,103 @@ export function SkiesPage() {
           </Button>
         </form>
       </BottomSheet>
+
+      {/* Edit sky name bottom sheet */}
+      <BottomSheet
+        open={editEntry !== null}
+        onOpenChange={(open) => { if (!open) setEditEntry(null) }}
+        title="Editar cielo"
+      >
+        <form onSubmit={handleEdit} className="space-y-5 px-1 pt-2 pb-4">
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="edit-sky-title"
+              className="text-xs font-normal tracking-wide"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              Nombre del cielo
+            </Label>
+            <Input
+              id="edit-sky-title"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              placeholder="Mi cielo estrellado"
+              maxLength={SKY_TITLE_MAX_LENGTH}
+              required
+              autoFocus
+              className="h-10 bg-white/[0.03] border-white/[0.08] placeholder:text-white/20"
+            />
+            <p
+              className="text-right text-[11px]"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              {editTitle.length}/{SKY_TITLE_MAX_LENGTH}
+            </p>
+          </div>
+          <Button
+            type="submit"
+            size="lg"
+            className="h-11 w-full tracking-wide"
+            disabled={!editTitle.trim() || saving}
+          >
+            {saving ? 'Guardando...' : 'Guardar'}
+          </Button>
+        </form>
+      </BottomSheet>
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={deleteEntry !== null} onOpenChange={(open) => { if (!open) { setDeleteEntry(null); setDeleteConfirmText('') } }}>
+        <DialogContent
+          style={{
+            background: 'var(--glass-bg)',
+            backdropFilter: 'blur(var(--glass-blur))',
+            WebkitBackdropFilter: 'blur(var(--glass-blur))',
+            border: '1px solid var(--glass-border)',
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle style={{ color: 'var(--text-primary)' }}>
+              Eliminar {deleteEntry?.sky.title}
+            </DialogTitle>
+            <DialogDescription style={{ color: 'var(--text-secondary)' }}>
+              Se eliminarán todas las estrellas, miembros e invitaciones. Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5 py-2">
+            <Label
+              htmlFor="delete-confirm"
+              className="text-xs font-normal tracking-wide"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              Escribe <span className="font-medium text-[var(--text-primary)]">{deleteEntry?.sky.title}</span> para confirmar
+            </Label>
+            <Input
+              id="delete-confirm"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder={deleteEntry?.sky.title}
+              autoFocus
+              className="h-10 bg-white/[0.03] border-white/[0.08] placeholder:text-white/20"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => { setDeleteEntry(null); setDeleteConfirmText('') }}
+              disabled={deleting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting || deleteConfirmText !== deleteEntry?.sky.title}
+            >
+              {deleting ? 'Eliminando...' : 'Eliminar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

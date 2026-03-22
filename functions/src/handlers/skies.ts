@@ -131,45 +131,65 @@ export async function updateSky(req: Request, res: Response): Promise<void> {
       return
     }
 
-    const body = req.body as { personalization?: Record<string, unknown> }
-    if (!body.personalization || typeof body.personalization !== 'object') {
-      res.status(400).json({ error: 'Se requiere el campo personalization' })
+    const body = req.body as { title?: unknown; personalization?: Record<string, unknown> }
+
+    const hasTitle = 'title' in body
+    const hasPersonalization = body.personalization && typeof body.personalization === 'object'
+
+    if (!hasTitle && !hasPersonalization) {
+      res.status(400).json({ error: 'Se requiere al menos title o personalization' })
       return
     }
 
-    const incoming = body.personalization
-    const unknownKeys = Object.keys(incoming).filter(
-      k => !(PERSONALIZATION_KEYS as readonly string[]).includes(k),
-    )
-    if (unknownKeys.length > 0) {
-      res.status(400).json({ error: `Campos no permitidos: ${unknownKeys.join(', ')}` })
-      return
+    const updateData: Record<string, unknown> = {
+      updatedAt: new Date().toISOString(),
     }
 
-    if ('theme' in incoming && (typeof incoming.theme !== 'string' || !VALID_THEMES.includes(incoming.theme as SkyTheme))) {
-      res.status(400).json({ error: 'Tema inválido' })
-      return
-    }
-    if ('density' in incoming && (typeof incoming.density !== 'string' || !VALID_DENSITIES.includes(incoming.density as SkyDensity))) {
-      res.status(400).json({ error: 'Densidad inválida' })
-      return
-    }
-    for (const key of ['nebulaEnabled', 'twinkleEnabled', 'shootingStarsEnabled'] as const) {
-      if (key in incoming && typeof incoming[key] !== 'boolean') {
-        res.status(400).json({ error: `${key} debe ser booleano` })
+    if (hasTitle) {
+      const rawTitle = typeof body.title === 'string' ? body.title.trim() : ''
+      if (!rawTitle) {
+        res.status(400).json({ error: 'El título no puede estar vacío' })
         return
+      }
+      if (rawTitle.length > SKY_TITLE_MAX_LENGTH) {
+        res.status(400).json({ error: `El título no puede superar ${SKY_TITLE_MAX_LENGTH} caracteres` })
+        return
+      }
+      updateData.title = rawTitle
+    }
+
+    if (hasPersonalization) {
+      const incoming = body.personalization!
+      const unknownKeys = Object.keys(incoming).filter(
+        k => !(PERSONALIZATION_KEYS as readonly string[]).includes(k),
+      )
+      if (unknownKeys.length > 0) {
+        res.status(400).json({ error: `Campos no permitidos: ${unknownKeys.join(', ')}` })
+        return
+      }
+
+      if ('theme' in incoming && (typeof incoming.theme !== 'string' || !VALID_THEMES.includes(incoming.theme as SkyTheme))) {
+        res.status(400).json({ error: 'Tema inválido' })
+        return
+      }
+      if ('density' in incoming && (typeof incoming.density !== 'string' || !VALID_DENSITIES.includes(incoming.density as SkyDensity))) {
+        res.status(400).json({ error: 'Densidad inválida' })
+        return
+      }
+      for (const key of ['nebulaEnabled', 'twinkleEnabled', 'shootingStarsEnabled'] as const) {
+        if (key in incoming && typeof incoming[key] !== 'boolean') {
+          res.status(400).json({ error: `${key} debe ser booleano` })
+          return
+        }
+      }
+
+      updateData.personalization = {
+        ...access.sky.personalization,
+        ...incoming as Partial<SkyPersonalization>,
       }
     }
 
-    const merged: SkyPersonalization = {
-      ...access.sky.personalization,
-      ...incoming as Partial<SkyPersonalization>,
-    }
-
-    await db.collection('skies').doc(skyId).update({
-      personalization: merged,
-      updatedAt: new Date().toISOString(),
-    })
+    await db.collection('skies').doc(skyId).update(updateData)
 
     res.status(200).json({ ok: true })
   } catch (error) {
@@ -202,5 +222,70 @@ export async function getSky(req: Request, res: Response): Promise<void> {
   } catch (error) {
     console.error('getSky failed:', error)
     res.status(500).json({ error: 'Error interno al obtener el cielo' })
+  }
+}
+
+const BATCH_LIMIT = 500
+
+export async function deleteSky(req: Request, res: Response): Promise<void> {
+  try {
+    const decoded = await authenticateRequest(req)
+    const { skyId } = req.routeParams
+
+    const access = await getSkyWithAccess(skyId, decoded.uid)
+    if (!access.ok) {
+      res.status(access.reason === 'error' ? 500 : 404).json({ error: 'Cielo no encontrado' })
+      return
+    }
+
+    if (access.member.role !== 'owner') {
+      res.status(403).json({ error: 'Solo el propietario puede eliminar el cielo' })
+      return
+    }
+
+    const skyRef = db.collection('skies').doc(skyId)
+
+    // Collect all docs to delete/update
+    const [starsSnap, membersSnap, invitesSnap] = await Promise.all([
+      skyRef.collection('stars').get(),
+      skyRef.collection('members').get(),
+      db.collection('invites')
+        .where('skyId', '==', skyId)
+        .where('status', '==', 'pending')
+        .get(),
+    ])
+
+    // Process in batches of 500 (Firestore limit)
+    const allOps: Array<{ type: 'delete'; ref: FirebaseFirestore.DocumentReference } | { type: 'update'; ref: FirebaseFirestore.DocumentReference; data: Record<string, unknown> }> = []
+
+    for (const doc of starsSnap.docs) {
+      allOps.push({ type: 'delete', ref: doc.ref })
+    }
+    for (const doc of membersSnap.docs) {
+      allOps.push({ type: 'delete', ref: doc.ref })
+    }
+    for (const doc of invitesSnap.docs) {
+      allOps.push({ type: 'update', ref: doc.ref, data: { status: 'revoked' } })
+    }
+    // Delete the sky doc itself last
+    allOps.push({ type: 'delete', ref: skyRef })
+
+    for (let i = 0; i < allOps.length; i += BATCH_LIMIT) {
+      const batch = db.batch()
+      const chunk = allOps.slice(i, i + BATCH_LIMIT)
+      for (const op of chunk) {
+        if (op.type === 'delete') {
+          batch.delete(op.ref)
+        } else {
+          batch.update(op.ref, op.data)
+        }
+      }
+      await batch.commit()
+    }
+
+    res.status(200).json({ ok: true })
+  } catch (error) {
+    console.error('deleteSky failed:', error)
+    res.status(500).json({ error: 'Error interno al eliminar el cielo' })
   }
 }

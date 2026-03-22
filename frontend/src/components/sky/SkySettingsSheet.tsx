@@ -14,9 +14,12 @@ import {
 } from '@/components/ui/dialog'
 import { api } from '@/lib/api/client'
 import { toast } from 'sonner'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
-import { Sparkles, Palette, Gauge, LogOut } from 'lucide-react'
+import { Sparkles, Palette, Gauge, LogOut, Type } from 'lucide-react'
 import type { SkyRecord, SkyTheme, SkyDensity, MemberRole } from '@/domain/contracts'
+import { SKY_TITLE_MAX_LENGTH } from '@/domain/policies'
 import type { SkyConfig } from '@/engine/SkyEngine'
 
 interface SkySettingsSheetProps {
@@ -27,6 +30,7 @@ interface SkySettingsSheetProps {
   role: MemberRole
   onConfigChange: (config: SkyConfig) => void
   onLeave?: () => void
+  onTitleChange?: (newTitle: string) => void
 }
 
 interface SegmentOption<T extends string> {
@@ -89,6 +93,7 @@ export function SkySettingsSheet({
   role,
   onConfigChange,
   onLeave,
+  onTitleChange,
 }: SkySettingsSheetProps) {
   const [localConfig, setLocalConfig] = useState<SkyConfig>(() => ({
     twinkle: sky.personalization.twinkleEnabled,
@@ -99,6 +104,8 @@ export function SkySettingsSheet({
   }))
   const [theme, setTheme] = useState<SkyTheme>(sky.personalization.theme)
   const [density, setDensity] = useState<SkyDensity>(sky.personalization.density)
+  const [editingTitle, setEditingTitle] = useState(sky.title)
+  const [savingTitle, setSavingTitle] = useState(false)
   const [confirmLeave, setConfirmLeave] = useState(false)
   const [leaving, setLeaving] = useState(false)
 
@@ -195,6 +202,25 @@ export function SkySettingsSheet({
     updateConfig({ motion: value })
   }
 
+  const handleSaveTitle = async () => {
+    const title = editingTitle.trim()
+    if (!title || title === sky.title) return
+
+    setSavingTitle(true)
+    try {
+      await api(`/api/skies/${skyId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ title }),
+      })
+      onTitleChange?.(title)
+      toast.success('Nombre actualizado')
+    } catch {
+      toast.error('Error al actualizar el nombre')
+    } finally {
+      setSavingTitle(false)
+    }
+  }
+
   const handleLeave = async () => {
     setLeaving(true)
     try {
@@ -224,6 +250,36 @@ export function SkySettingsSheet({
           transition={{ duration: 0.3, ease: 'easeOut' }}
           className="px-2 pb-8 pt-2 space-y-5"
         >
+          {/* Section: Nombre del cielo (owner only) */}
+          {isOwner && (
+            <>
+              <div>
+                <h3 className="flex items-center gap-1.5 text-xs tracking-wide uppercase text-[var(--text-muted)] mb-3">
+                  <Type className="h-4 w-4" />
+                  Nombre del cielo
+                </h3>
+                <div className="flex gap-2">
+                  <Input
+                    value={editingTitle}
+                    onChange={(e) => setEditingTitle(e.target.value)}
+                    maxLength={SKY_TITLE_MAX_LENGTH}
+                    className="h-9 flex-1 bg-white/[0.03] border-white/[0.08] text-sm font-light"
+                  />
+                  <Button
+                    size="sm"
+                    className="h-9 shrink-0"
+                    onClick={handleSaveTitle}
+                    disabled={savingTitle || !editingTitle.trim() || editingTitle.trim() === sky.title}
+                  >
+                    {savingTitle ? 'Guardando...' : 'Guardar'}
+                  </Button>
+                </div>
+              </div>
+
+              <Separator className="my-1 opacity-30" />
+            </>
+          )}
+
           {/* Section A - Efectos visuales (owner only) */}
           {isOwner && (
             <>
