@@ -17,7 +17,7 @@ import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { Sparkles, Palette, Gauge, LogOut, Type } from 'lucide-react'
-import type { SkyRecord, SkyTheme, SkyDensity, MemberRole } from '@/domain/contracts'
+import type { SkyRecord, SkyDensity, MemberRole } from '@/domain/contracts'
 import { SKY_TITLE_MAX_LENGTH } from '@/domain/policies'
 import type { SkyConfig } from '@/engine/SkyEngine'
 
@@ -67,12 +67,6 @@ function SegmentedControl<T extends string>({
   )
 }
 
-const themeOptions: SegmentOption<SkyTheme>[] = [
-  { label: 'Clásico', value: 'classic' },
-  { label: 'Romántico', value: 'romantic' },
-  { label: 'Noche profunda', value: 'deep-night' },
-]
-
 const densityOptions: SegmentOption<SkyDensity>[] = [
   { label: 'Baja', value: 'low' },
   { label: 'Media', value: 'medium' },
@@ -101,7 +95,6 @@ export function SkySettingsSheet({
     quality: 'high',
     motion: 'mouse',
   }))
-  const [theme, setTheme] = useState<SkyTheme>(sky.personalization.theme)
   const [density, setDensity] = useState<SkyDensity>(sky.personalization.density)
   const [editingTitle, setEditingTitle] = useState(sky.title)
   const [savingTitle, setSavingTitle] = useState(false)
@@ -144,7 +137,6 @@ export function SkySettingsSheet({
       nebulaEnabled: checked,
       twinkleEnabled: localConfig.twinkle,
       shootingStarsEnabled: localConfig.shootingStars,
-      theme,
       density,
     })
   }
@@ -155,7 +147,6 @@ export function SkySettingsSheet({
       nebulaEnabled: localConfig.nebula,
       twinkleEnabled: checked,
       shootingStarsEnabled: localConfig.shootingStars,
-      theme,
       density,
     })
   }
@@ -166,18 +157,6 @@ export function SkySettingsSheet({
       nebulaEnabled: localConfig.nebula,
       twinkleEnabled: localConfig.twinkle,
       shootingStarsEnabled: checked,
-      theme,
-      density,
-    })
-  }
-
-  const handleThemeChange = (value: SkyTheme) => {
-    setTheme(value)
-    schedulePersist({
-      nebulaEnabled: localConfig.nebula,
-      twinkleEnabled: localConfig.twinkle,
-      shootingStarsEnabled: localConfig.shootingStars,
-      theme: value,
       density,
     })
   }
@@ -188,7 +167,6 @@ export function SkySettingsSheet({
       nebulaEnabled: localConfig.nebula,
       twinkleEnabled: localConfig.twinkle,
       shootingStarsEnabled: localConfig.shootingStars,
-      theme,
       density: value,
     })
   }
@@ -316,11 +294,6 @@ export function SkySettingsSheet({
                   Apariencia
                 </h3>
                 <label className="text-xs tracking-wide text-[var(--text-muted)] mb-2 block">
-                  Tema
-                </label>
-                <SegmentedControl options={themeOptions} selected={theme} onChange={handleThemeChange} />
-
-                <label className="text-xs tracking-wide text-[var(--text-muted)] mb-2 mt-4 block">
                   Densidad de estrellas
                 </label>
                 <SegmentedControl options={densityOptions} selected={density} onChange={handleDensityChange} />
