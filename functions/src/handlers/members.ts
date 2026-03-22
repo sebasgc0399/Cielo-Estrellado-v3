@@ -2,7 +2,7 @@ import type { Request } from 'firebase-functions/v2/https'
 import type { Response } from 'express'
 import { authenticateRequest } from '../middleware/auth.js'
 import { db } from '../lib/firebaseAdmin.js'
-import type { MemberRecord, MemberRole, MemberStatus, UserRecord, IsoDateString } from '../domain/contracts.js'
+import type { MemberRecord, MemberRole, UserRecord, IsoDateString } from '../domain/contracts.js'
 
 export async function listMembers(req: Request, res: Response): Promise<void> {
   try {
@@ -133,7 +133,7 @@ export async function updateMember(req: Request, res: Response): Promise<void> {
         res.status(400).json({ error: 'Solo se permite status "revoked"' })
         return
       }
-      await targetRef.update({ status: 'revoked' as MemberStatus })
+      await targetRef.update({ status: 'revoked' })
     } else if (hasRole) {
       if (!VALID_ROLES.includes(body.role as MemberRole)) {
         res.status(400).json({ error: 'Rol inválido. Debe ser "editor" o "viewer"' })
@@ -177,7 +177,7 @@ export async function leaveSky(req: Request, res: Response): Promise<void> {
       return
     }
 
-    await memberRef.update({ status: 'revoked' as MemberStatus })
+    await memberRef.update({ status: 'revoked' })
     res.status(200).json({ ok: true })
   } catch (error) {
     console.error('Leave sky failed:', error)

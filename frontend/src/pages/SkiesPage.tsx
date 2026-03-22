@@ -1,7 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { useRequireAuth } from '@/lib/auth/useRequireAuth'
-import { useAuth } from '@/lib/auth/AuthContext'
 import { api } from '@/lib/api/client'
 import { SkyCanvas } from '@/components/sky/SkyCanvas'
 import { BlurFade } from '@/components/ui/blur-fade'
@@ -45,7 +44,6 @@ function formatDate(iso: string): string {
 
 export function SkiesPage() {
   const { user, loading: authLoading } = useRequireAuth()
-  const { signOut } = useAuth()
   const navigate = useNavigate()
 
   const [skies, setSkies] = useState<SkyEntry[]>([])
@@ -156,11 +154,6 @@ export function SkiesPage() {
   const openDelete = (entry: SkyEntry) => {
     setDeleteConfirmText('')
     setDeleteEntry(entry)
-  }
-
-  const handleSignOut = async () => {
-    await signOut()
-    navigate('/login', { replace: true })
   }
 
   const displayName = user.displayName || user.email?.split('@')[0] || 'Explorador'

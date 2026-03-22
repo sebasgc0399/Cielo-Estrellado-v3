@@ -15,7 +15,6 @@ import {
 import { api } from '@/lib/api/client'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { Sparkles, Palette, Gauge, LogOut, Type } from 'lucide-react'
 import type { SkyRecord, SkyTheme, SkyDensity, MemberRole } from '@/domain/contracts'
