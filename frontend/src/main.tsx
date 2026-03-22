@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router'
 import { AuthProvider, useAuth } from '@/lib/auth/AuthContext'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
+import { Toaster } from '@/components/ui/sonner'
 import { LoginPage } from '@/pages/LoginPage'
 import { SkiesPage } from '@/pages/SkiesPage'
 import { SkyPage } from '@/pages/SkyPage'
@@ -27,6 +28,7 @@ function App() {
         <Route path="/invite/:token" element={<InvitePage />} />
         <Route path="/profile" element={<ProfilePage />} />
       </Routes>
+      <Toaster />
     </AuthProvider>
   )
 }
