@@ -3,7 +3,7 @@
 ## Filosofia operativa
 
 - **Simplicidad extrema.** La solucion mas simple que funcione es la correcta. Si tres lineas resuelven el problema, no crear una abstraccion.
-- **Entender el dominio antes de codear.** Un cielo tiene estrellas, miembros e invitaciones. Toda decision tecnica debe partir de ese modelo, no al reves.
+- **Entender el dominio antes de codear.** Un cielo tiene estrellas, miembros e invitaciones. Un usuario tiene Polvo Estelar (balance), inventario (temas desbloqueados) y un limite de cielos. Toda decision tecnica debe partir de ese modelo, no al reves.
 - **No abstracciones prematuras.** No crear helpers, utils ni wrappers hasta que haya al menos 3 usos reales. Duplicar es mejor que abstraer sin motivo.
 - **Soluciones directas, verificables, mantenibles.** Si no se puede verificar que funciona en menos de 2 minutos, probablemente es demasiado compleja.
 
@@ -12,6 +12,7 @@
 - **TypeScript estricto.** `strict: true` en ambos tsconfig. Cero `any`. Tipar explicitamente lo que no se infiere.
 - **Separacion clara de capas:**
   - `engine/` — rendering puro, sin dependencias de React ni Firebase
+  - `domain/` — contratos, tipos, catalogo de tienda, reglas de economia, definiciones de temas (compartido entre frontend y functions)
   - `lib/` — integraciones (Firebase, API client, auth)
   - `hooks/` — logica reactiva que conecta lib con UI
   - `components/` — solo presentacion e interaccion
@@ -56,9 +57,9 @@ Formato: que se cambia, por que, que alternativas se descartaron, que se rompe s
 ## Contexto del proyecto
 
 - **Stack:** React 19 + Vite 6 + TypeScript (frontend), Cloud Functions v2 gen2 + Node 22 (backend)
-- **Firebase project:** `masmelito-f209c` — se reutiliza BD, Storage y Auth existentes de v4
-- **v4 esta en:** `../cielo-estrellado-v4/` — fuente para copiar SkyEngine, contracts, policies y reglas
-- **SkyEngine se copia verbatim de v4.** No se modifica a menos que haya un bug. Cualquier cambio requiere mini-RFC.
+- **Firebase project:** `masmelito-f209c`
+- **SkyEngine se modifica para aceptar `ThemeParams`** (mini-RFC aprobado en SPEC_v2.md §2.2). El cambio es quirurgico: parametrizar colores hardcodeados. Cualquier cambio adicional al engine sigue requiriendo mini-RFC.
+- **Fase actual:** Implementacion de economia (Polvo Estelar) y sistema de temas (SPEC_v2.md).
 - **Reads directos desde cliente** via `onSnapshot`. Solo writes van por Cloud Functions.
 - **Sin SSR.** SPA pura desplegada en Firebase Hosting.
 
@@ -78,6 +79,17 @@ cd frontend && npm run build && cd .. && firebase deploy --only hosting
 firebase deploy                     # Todo junto
 ```
 
+## Principios de economia
+
+- **Todo grant de Polvo Estelar ocurre en Cloud Functions.** Nunca en el cliente. El cliente solo muestra el balance.
+- **Catalogo de tienda es dato estatico en el bundle** (`shopCatalog.ts`). No se almacena en Firestore.
+- **Resolucion de temas es client-side.** `themeId → ThemeParams` es un lookup estatico en `themes.ts`. El engine recibe parametros, no IDs.
+- **Balance es campo en `UserRecord`**, no coleccion separada. Evita un read extra por auth check.
+- **Compras usan transacciones Firestore atomicas.** Debito + inventario + log en una sola transaccion.
+
 ## Especificacion
 
-La especificacion completa del proyecto esta en `SPEC.md`. Consultarlo antes de implementar cualquier feature.
+- `SPEC.md` — features base (cielos, estrellas, miembros, invitaciones, auth, SkyEngine)
+- `SPEC_v2.md` — economia (Polvo Estelar) y sistema de temas desbloqueables
+
+Consultar ambos antes de implementar cualquier feature.
