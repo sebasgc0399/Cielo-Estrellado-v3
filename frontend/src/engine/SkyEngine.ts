@@ -110,7 +110,7 @@ export class SkyEngine {
   private userStarDefs: UserStar[] = []
   private userStarCache: InternalUserStar[] = []
   private needsUserStars = false
-  private readonly userStarParallax = 0.03
+  private readonly userStarParallax = 0
   private onFps?: (fps: number) => void
 
   constructor(canvases: LayerCanvases, options: EngineOptions = {}) {

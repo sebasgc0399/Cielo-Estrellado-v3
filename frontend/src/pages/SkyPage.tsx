@@ -53,7 +53,11 @@ export function SkyPage() {
   const handleStarTap = useCallback((starId: string) => {
     if (creationMode) setCreationMode(false)
     const star = stars.find(s => s.starId === starId)
-    if (star) setSelectedStar(star)
+    if (star) {
+      // Defer one frame so the synthesized click from pointerdown+pointerup
+      // doesn't immediately hit the Sheet backdrop and close it
+      requestAnimationFrame(() => setSelectedStar(star))
+    }
   }, [stars, creationMode])
 
   const handleEmptyTap = useCallback((nx: number, ny: number) => {

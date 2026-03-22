@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useAuth } from '@/lib/auth/AuthContext'
 import { api, ApiError } from '@/lib/api/client'
 import type { SkyRecord, MemberRole } from '@/domain/contracts'
 
@@ -8,12 +9,21 @@ type SkyResponse = {
 }
 
 export function useSkyData(skyId: string) {
+  const { user, loading: authLoading } = useAuth()
   const [sky, setSky] = useState<SkyRecord | null>(null)
   const [role, setRole] = useState<MemberRole | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (authLoading) return
+
+    if (!user) {
+      setError('No autenticado')
+      setLoading(false)
+      return
+    }
+
     let cancelled = false
 
     api<SkyResponse>(`/api/skies/${skyId}`)
@@ -41,7 +51,7 @@ export function useSkyData(skyId: string) {
       })
 
     return () => { cancelled = true }
-  }, [skyId])
+  }, [skyId, user, authLoading])
 
   return { sky, role, loading, error }
 }

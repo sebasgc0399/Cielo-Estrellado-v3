@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
+import { useAuth } from '@/lib/auth/AuthContext'
 import { db } from '@/lib/firebase/client'
 import type { StarRecord } from '@/domain/contracts'
 import type { UserStar } from '@/engine/SkyEngine'
@@ -7,11 +8,14 @@ import type { UserStar } from '@/engine/SkyEngine'
 export type StarWithId = StarRecord & { starId: string }
 
 export function useSkyStars(skyId: string) {
+  const { user, loading: authLoading } = useAuth()
   const [stars, setStars] = useState<StarWithId[]>([])
   const [userStars, setUserStars] = useState<UserStar[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (authLoading || !user) return
+
     const q = query(
       collection(db, 'skies', skyId, 'stars'),
       orderBy('createdAt', 'desc'),
@@ -42,7 +46,7 @@ export function useSkyStars(skyId: string) {
     })
 
     return unsubscribe
-  }, [skyId])
+  }, [skyId, user, authLoading])
 
   return { stars, userStars, loading }
 }

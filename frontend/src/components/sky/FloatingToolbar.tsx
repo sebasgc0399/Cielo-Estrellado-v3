@@ -72,14 +72,14 @@ export function FloatingToolbar({
     <AnimatePresence>
       {visible && (
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
           transition={{ duration: 0.25, ease: 'easeOut' }}
-          className="fixed bottom-6 left-1/2 z-30 -translate-x-1/2"
+          className="fixed z-30 bottom-6 left-1/2 -translate-x-1/2 md:bottom-auto md:left-4 md:top-1/2 md:-translate-y-1/2 md:translate-x-0"
         >
           <div
-            className="flex items-center gap-1 rounded-full px-2 py-1.5"
+            className="flex items-center gap-1 rounded-full px-2 py-1.5 md:flex-col md:px-1.5 md:py-2"
             style={{
               background: 'var(--glass-bg)',
               border: '1px solid var(--glass-border)',
