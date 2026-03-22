@@ -5,6 +5,7 @@ import type { MemberRole } from '@/domain/contracts'
 
 interface FloatingToolbarProps {
   role: MemberRole
+  creationMode?: boolean
   onAddStar: () => void
   onCollaborators: () => void
   onSettings: () => void
@@ -15,6 +16,7 @@ const AUTO_HIDE_MS = 3000
 
 export function FloatingToolbar({
   role,
+  creationMode,
   onAddStar,
   onCollaborators,
   onSettings,
@@ -26,8 +28,10 @@ export function FloatingToolbar({
   const resetTimer = useCallback(() => {
     setVisible(true)
     if (timerRef.current) clearTimeout(timerRef.current)
-    timerRef.current = setTimeout(() => setVisible(false), AUTO_HIDE_MS)
-  }, [])
+    if (!creationMode) {
+      timerRef.current = setTimeout(() => setVisible(false), AUTO_HIDE_MS)
+    }
+  }, [creationMode])
 
   useEffect(() => {
     resetTimer()
@@ -45,13 +49,21 @@ export function FloatingToolbar({
     }
   }, [resetTimer])
 
+  // Keep toolbar visible during creation mode
+  useEffect(() => {
+    if (creationMode) {
+      setVisible(true)
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
+  }, [creationMode])
+
   const canEdit = role === 'owner' || role === 'editor'
 
-  const buttons: { icon: typeof Plus; label: string; onClick: () => void; show: boolean }[] = [
-    { icon: ArrowLeft, label: 'Volver', onClick: onBack, show: true },
-    { icon: Plus, label: 'Crear estrella', onClick: onAddStar, show: canEdit },
-    { icon: Users, label: 'Colaboradores', onClick: onCollaborators, show: role === 'owner' },
-    { icon: Settings, label: 'Configuración', onClick: onSettings, show: true },
+  const buttons: { icon: typeof Plus; label: string; onClick: () => void; show: boolean; active: boolean }[] = [
+    { icon: ArrowLeft, label: 'Volver', onClick: onBack, show: true, active: false },
+    { icon: Plus, label: 'Crear estrella', onClick: onAddStar, show: canEdit, active: !!creationMode },
+    { icon: Users, label: 'Colaboradores', onClick: onCollaborators, show: role === 'owner', active: false },
+    { icon: Settings, label: 'Configuración', onClick: onSettings, show: true, active: false },
   ]
 
   const visibleButtons = buttons.filter(b => b.show)
@@ -76,20 +88,24 @@ export function FloatingToolbar({
               boxShadow: '0 4px 24px rgba(0, 0, 0, 0.4), 0 0 48px rgba(140, 180, 255, 0.06)',
             }}
           >
-            {visibleButtons.map(({ icon: Icon, label, onClick }) => (
+            {visibleButtons.map(({ icon: Icon, label, onClick, active }) => (
               <button
                 key={label}
                 onClick={(e) => {
                   e.stopPropagation()
                   onClick()
                 }}
-                className="flex h-10 w-10 items-center justify-center rounded-full transition-colors duration-150 hover:bg-white/[0.08] active:bg-white/[0.12]"
+                className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors duration-150 ${
+                  active
+                    ? 'bg-white/[0.12]'
+                    : 'hover:bg-white/[0.08] active:bg-white/[0.12]'
+                }`}
                 aria-label={label}
                 title={label}
               >
                 <Icon
                   className="h-[18px] w-[18px]"
-                  style={{ color: 'var(--text-secondary)' }}
+                  style={{ color: active ? 'var(--accent-color, #8cb4ff)' : 'var(--text-secondary)' }}
                   strokeWidth={1.5}
                 />
               </button>

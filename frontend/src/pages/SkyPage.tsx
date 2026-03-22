@@ -33,6 +33,7 @@ export function SkyPage() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [collaboratorsOpen, setCollaboratorsOpen] = useState(false)
   const [skyConfig, setSkyConfig] = useState<SkyConfig | undefined>(undefined)
+  const [creationMode, setCreationMode] = useState(false)
 
   // Initialize SkyConfig from personalization when sky loads
   useEffect(() => {
@@ -50,17 +51,19 @@ export function SkyPage() {
   // --- Handlers ---
 
   const handleStarTap = useCallback((starId: string) => {
+    if (creationMode) setCreationMode(false)
     const star = stars.find(s => s.starId === starId)
     if (star) setSelectedStar(star)
-  }, [stars])
+  }, [stars, creationMode])
 
   const handleEmptyTap = useCallback((nx: number, ny: number) => {
-    if (role === 'owner' || role === 'editor') {
+    if (creationMode) {
       setFormPosition({ x: nx, y: ny })
       setFormStar(null)
       setFormMode('create')
+      setCreationMode(false)
     }
-  }, [role])
+  }, [creationMode])
 
   const handleStarDragEnd = useCallback(async (starId: string, nx: number, ny: number): Promise<boolean> => {
     try {
@@ -83,9 +86,7 @@ export function SkyPage() {
   }, [])
 
   const handleAddStar = useCallback(() => {
-    setFormPosition(null)
-    setFormStar(null)
-    setFormMode('create')
+    setCreationMode(prev => !prev)
   }, [])
 
   const handleFormSuccess = useCallback(() => {
@@ -94,6 +95,16 @@ export function SkyPage() {
     setFormPosition(null)
     setSelectedStar(null)
   }, [])
+
+  // Escape key exits creation mode
+  useEffect(() => {
+    if (!creationMode) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setCreationMode(false)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [creationMode])
 
   // --- Loading / Error states ---
 
@@ -151,14 +162,34 @@ export function SkyPage() {
         userStars={userStars}
         config={skyConfig}
         highlightedStarId={selectedStar?.starId ?? null}
+        creationMode={creationMode}
         onStarTap={handleStarTap}
         onEmptyTap={canEdit ? handleEmptyTap : undefined}
         onStarDragEnd={canEdit ? handleStarDragEnd : undefined}
       />
 
+      {/* Creation mode hint */}
+      {creationMode && (
+        <div className="pointer-events-none fixed inset-x-0 top-12 z-20 flex justify-center">
+          <div
+            className="rounded-full px-4 py-2 text-sm font-light tracking-wide animate-in fade-in duration-300"
+            style={{
+              background: 'var(--glass-bg)',
+              border: '1px solid var(--glass-border)',
+              backdropFilter: 'blur(var(--glass-blur))',
+              WebkitBackdropFilter: 'blur(var(--glass-blur))',
+              color: 'var(--text-secondary)',
+            }}
+          >
+            Toca donde quieras colocar tu estrella
+          </div>
+        </div>
+      )}
+
       {/* Floating toolbar */}
       <FloatingToolbar
         role={role}
+        creationMode={creationMode}
         onAddStar={handleAddStar}
         onCollaborators={() => setCollaboratorsOpen(true)}
         onSettings={() => setSettingsOpen(true)}

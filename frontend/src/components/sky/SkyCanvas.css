@@ -20,3 +20,7 @@
 .sky-canvas[data-dragging="true"] {
   cursor: grabbing !important;
 }
+
+.sky-canvas[data-creation-mode="true"]:not([data-dragging="true"]) {
+  cursor: crosshair;
+}

@@ -73,6 +73,7 @@ type InternalUserStar = {
   twinkleAmp: number
   color: string
   blur: number
+  pulseSpeed: number
 }
 
 type EngineOptions = {
@@ -109,6 +110,7 @@ export class SkyEngine {
   private userStarDefs: UserStar[] = []
   private userStarCache: InternalUserStar[] = []
   private needsUserStars = false
+  private readonly userStarParallax = 0.03
   private onFps?: (fps: number) => void
 
   constructor(canvases: LayerCanvases, options: EngineOptions = {}) {
@@ -199,15 +201,21 @@ export class SkyEngine {
     }
   }
 
+  getUserStarParallaxOffset(): { x: number; y: number } {
+    return {
+      x: this.inputCurrent.x * this.width * this.userStarParallax,
+      y: this.inputCurrent.y * this.height * this.userStarParallax,
+    }
+  }
+
   syncInputTargetToCurrent(): void {
     this.inputTarget.x = this.inputCurrent.x
     this.inputTarget.y = this.inputCurrent.y
   }
 
   hitTest(clientX: number, clientY: number): string | null {
-    const nearParallax = this.layers.near.settings.parallax
-    const offsetX = this.inputCurrent.x * this.width * nearParallax
-    const offsetY = this.inputCurrent.y * this.height * nearParallax
+    const offsetX = this.inputCurrent.x * this.width * this.userStarParallax
+    const offsetY = this.inputCurrent.y * this.height * this.userStarParallax
     const hitRadius = 20
     let bestId: string | null = null
     let bestDist = hitRadius
@@ -325,13 +333,14 @@ export class SkyEngine {
       highlighted: hl,
       x: us.x,
       y: us.y,
-      radius: hl ? 3.2 : 2.2,
-      baseAlpha: hl ? 1.0 : 0.9,
+      radius: hl ? 4.5 : 3.5,
+      baseAlpha: hl ? 1.0 : 0.92,
       twinkleSpeed: rand(0.35, 0.7),
       twinklePhase: rand(0, Math.PI * 2),
       twinkleAmp: hl ? 0.04 : 0.06,
       color: hl ? 'rgb(255, 250, 235)' : 'rgb(255, 245, 225)',
-      blur: hl ? 4.0 : 3.0,
+      blur: hl ? 6.0 : 5.0,
+      pulseSpeed: rand(0.4, 0.7),
     }
   }
 
@@ -456,9 +465,8 @@ export class SkyEngine {
 
     if (this.userStarCache.length > 0) {
       const nearCtx = this.layers.near.ctx
-      const nearParallax = this.layers.near.settings.parallax
-      const uOffsetX = this.inputCurrent.x * this.width * nearParallax
-      const uOffsetY = this.inputCurrent.y * this.height * nearParallax
+      const uOffsetX = this.inputCurrent.x * this.width * this.userStarParallax
+      const uOffsetY = this.inputCurrent.y * this.height * this.userStarParallax
 
       nearCtx.save()
       for (const us of this.userStarCache) {
@@ -466,16 +474,28 @@ export class SkyEngine {
           ? Math.sin(t * us.twinkleSpeed + us.twinklePhase)
           : 0
         const alpha = clamp(us.baseAlpha + twinkle * us.twinkleAmp, 0.08, 1)
+        const pulse = 1.0 + 0.15 * Math.sin(t * us.pulseSpeed)
         const px = us.x * this.width + uOffsetX
         const py = us.y * this.height + uOffsetY
         if (px < -20 || py < -20 || px > this.width + 20 || py > this.height + 20) continue
 
+        const r = us.radius * pulse
+
+        // Outer halo
+        nearCtx.shadowBlur = 0
+        nearCtx.globalAlpha = alpha * 0.12
+        nearCtx.fillStyle = us.color
+        nearCtx.beginPath()
+        nearCtx.arc(px, py, r * 2.5, 0, Math.PI * 2)
+        nearCtx.fill()
+
+        // Core star
         nearCtx.shadowBlur = us.blur
         nearCtx.shadowColor = 'rgba(255, 235, 200, 0.6)'
         nearCtx.globalAlpha = alpha
         nearCtx.fillStyle = us.color
         nearCtx.beginPath()
-        nearCtx.arc(px, py, us.radius, 0, Math.PI * 2)
+        nearCtx.arc(px, py, r, 0, Math.PI * 2)
         nearCtx.fill()
       }
       nearCtx.restore()

@@ -18,6 +18,7 @@ type SkyCanvasProps = {
   userStars?: UserStar[]
   config?: SkyConfig
   highlightedStarId?: string | null
+  creationMode?: boolean
   onStarTap?: (starId: string) => void
   onEmptyTap?: (nx: number, ny: number) => void
   onStarDragEnd?: (starId: string, nx: number, ny: number) => Promise<boolean>
@@ -39,6 +40,7 @@ export function SkyCanvas({
   userStars,
   config,
   highlightedStarId,
+  creationMode,
   onStarTap,
   onEmptyTap,
   onStarDragEnd,
@@ -120,6 +122,17 @@ export function SkyCanvas({
     engineRef.current?.setUserStars(withHighlight)
   }, [userStars, highlightedStarId])
 
+  // Sync creation mode data attribute
+  useEffect(() => {
+    const c = containerRef.current
+    if (!c) return
+    if (creationMode) {
+      c.dataset.creationMode = 'true'
+    } else {
+      delete c.dataset.creationMode
+    }
+  }, [creationMode])
+
   // --- Pointer helpers ---
 
   const updatePointer = (event: PointerEvent<HTMLDivElement>, active: boolean) => {
@@ -185,7 +198,7 @@ export function SkyCanvas({
       const hitId = engineRef.current?.hitTest(downX, downY) ?? null
       if (hitId) {
         // 1. Capture parallax offset before freezing
-        const offset = engineRef.current!.getParallaxOffset()
+        const offset = engineRef.current!.getUserStarParallaxOffset()
         // 2. Freeze parallax: inputTarget = inputCurrent
         engineRef.current!.syncInputTargetToCurrent()
         // 3. Save snapshot for revert
