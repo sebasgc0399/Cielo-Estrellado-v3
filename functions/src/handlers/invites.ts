@@ -119,21 +119,22 @@ export async function revokeInviteHandler(req: Request, res: Response): Promise<
 
     await revokeInvite(inviteId, skyId)
     res.status(200).json({ ok: true })
-  } catch (error) {
+  } catch (error: unknown) {
+    const revokeErr = error as { code?: string }
     if (error instanceof RevokeError) {
-      if (error.code === 'invite_not_found') {
+      if (revokeErr.code === 'invite_not_found') {
         res.status(404).json({ error: 'Invitación no encontrada' })
         return
       }
-      if (error.code === 'invite_already_used') {
+      if (revokeErr.code === 'invite_already_used') {
         res.status(409).json({ error: 'Esta invitación ya fue utilizada' })
         return
       }
-      if (error.code === 'invite_already_revoked') {
+      if (revokeErr.code === 'invite_already_revoked') {
         res.status(409).json({ error: 'Esta invitación ya fue revocada' })
         return
       }
-      if (error.code === 'invite_expired') {
+      if (revokeErr.code === 'invite_expired') {
         res.status(409).json({ error: 'Esta invitación ya expiró' })
         return
       }

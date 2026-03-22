@@ -4,7 +4,9 @@ import { authenticateRequest } from '../middleware/auth.js'
 import { db } from '../lib/firebaseAdmin.js'
 import { getSkyWithAccess } from '../lib/getSkyWithAccess.js'
 import { STAR_TITLE_MAX_LENGTH, STAR_MESSAGE_MAX_LENGTH } from '../domain/policies.js'
-import type { StarRecord } from '../domain/contracts.js'
+import type { DocumentReference } from '@google-cloud/firestore'
+import type { StarRecord, TransactionRecord } from '../domain/contracts.js'
+import { STAR_CREATION_REWARD, FIRST_STAR_BONUS, MAX_STARS_REWARD_PER_DAY } from '../domain/economyRules.js'
 
 function validateCoordinates(body: {
   xNormalized?: unknown
@@ -112,9 +114,79 @@ export async function createStar(req: Request, res: Response): Promise<void> {
       deletedByUserId: null,
     }
 
+    const existingStarsSnap = await db
+      .collection('skies').doc(skyId).collection('stars')
+      .where('authorUserId', '==', decoded.uid)
+      .where('deletedAt', '==', null)
+      .limit(1)
+      .get()
+    const isFirstStar = existingStarsSnap.empty
+
     await starRef.set(starData)
 
-    res.status(201).json({ starId: starRef.id })
+    let stardustEarned = 0
+    try {
+      const userRef = db.collection('users').doc(decoded.uid)
+      const userSnap = await userRef.get()
+      const userData = userSnap.data()
+
+      if (userData) {
+        const todayUTC = new Date().toISOString().slice(0, 10)
+        let createdStarsToday = typeof userData.createdStarsToday === 'number' ? userData.createdStarsToday : 0
+        const lastStarCreationDate = typeof userData.lastStarCreationDate === 'string' ? userData.lastStarCreationDate : null
+        const currentStardust = typeof userData.stardust === 'number' ? userData.stardust : 0
+
+        if (lastStarCreationDate !== todayUTC) {
+          createdStarsToday = 0
+        }
+
+        let creationReward = 0
+        if (createdStarsToday < MAX_STARS_REWARD_PER_DAY) {
+          creationReward = STAR_CREATION_REWARD
+          createdStarsToday += 1
+        }
+
+        let firstStarReward = 0
+        if (isFirstStar) {
+          firstStarReward = FIRST_STAR_BONUS
+        }
+
+        stardustEarned = creationReward + firstStarReward
+
+        if (stardustEarned > 0) {
+          const newBalance = currentStardust + stardustEarned
+          await userRef.update({
+            stardust: newBalance,
+            createdStarsToday,
+            lastStarCreationDate: todayUTC,
+          })
+
+          const txNow = new Date().toISOString()
+          const txPromises: Promise<DocumentReference>[] = []
+
+          if (creationReward > 0) {
+            const tx: TransactionRecord = {
+              type: 'earn', amount: creationReward, reason: 'star_creation',
+              itemId: null, balanceAfter: currentStardust + creationReward, createdAt: txNow,
+            }
+            txPromises.push(userRef.collection('transactions').add(tx))
+          }
+          if (firstStarReward > 0) {
+            const tx: TransactionRecord = {
+              type: 'earn', amount: firstStarReward, reason: 'first_star_bonus',
+              itemId: null, balanceAfter: newBalance, createdAt: txNow,
+            }
+            txPromises.push(userRef.collection('transactions').add(tx))
+          }
+
+          await Promise.all(txPromises)
+        }
+      }
+    } catch (rewardError) {
+      console.error('Star creation reward failed (non-blocking):', rewardError)
+    }
+
+    res.status(201).json({ starId: starRef.id, rewards: { stardustEarned } })
   } catch (error) {
     console.error('Star creation failed:', error)
     res.status(500).json({ error: 'Error interno al crear la estrella' })

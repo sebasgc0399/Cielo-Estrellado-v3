@@ -1,0 +1,10 @@
+export const DAILY_LOGIN_REWARD = 10
+export const STAR_CREATION_REWARD = 5
+export const FIRST_STAR_BONUS = 25
+export const STREAK_7_BONUS = 50
+export const STREAK_30_BONUS = 200
+export const INVITE_ACCEPTED_REWARD = 30
+export const WEEKLY_BONUS = 20
+export const WELCOME_BONUS = 100
+export const MAX_STARS_REWARD_PER_DAY = 10
+export const MAX_INVITE_REWARDS_PER_DAY = 5

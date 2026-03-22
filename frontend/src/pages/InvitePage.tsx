@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { api, ApiError } from '@/lib/api/client'
 import { toast } from 'sonner'
+import { showStardustToast } from '@/components/economy/StardustToast'
 import type { InviteRole } from '@/domain/contracts'
 
 type ValidPreview = {
@@ -74,10 +75,13 @@ export function InvitePage() {
 
     setAccepting(true)
     try {
-      const response = await api<{ skyId: string }>(`/api/invites/${token}/accept`, {
+      const response = await api<{ skyId: string; rewards?: { stardustEarned: number } }>(`/api/invites/${token}/accept`, {
         method: 'POST',
       })
       navigate(`/sky/${response.skyId}`, { replace: true })
+      if (response.rewards?.stardustEarned) {
+        showStardustToast(response.rewards.stardustEarned, 'invite_accepted')
+      }
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         navigate(`/sky/${preview.skyId}`, { replace: true })

@@ -1,7 +1,8 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { useRequireAuth } from '@/lib/auth/useRequireAuth'
-import { api } from '@/lib/api/client'
+import { useUserEconomy } from '@/hooks/useUserEconomy'
+import { api, ApiError } from '@/lib/api/client'
 import { SkyCanvas } from '@/components/sky/SkyCanvas'
 import { BlurFade } from '@/components/ui/blur-fade'
 import { Button } from '@/components/ui/button'
@@ -22,6 +23,12 @@ import {
 import { toast } from 'sonner'
 import { Plus, Sparkles, Pencil, Trash2 } from 'lucide-react'
 import { getInitials } from '@/lib/getInitials'
+import { StardustBalance } from '@/components/economy/StardustBalance'
+import { StreakIndicator } from '@/components/economy/StreakIndicator'
+import { DailyRewardModal } from '@/components/economy/DailyRewardModal'
+import { TransactionHistory } from '@/components/economy/TransactionHistory'
+import { StardustOnboarding } from '@/components/economy/StardustOnboarding'
+import { PurchaseDialog } from '@/components/economy/PurchaseDialog'
 import type { SkyRecord, MemberRole } from '@/domain/contracts'
 import { SKY_TITLE_MAX_LENGTH } from '@/domain/policies'
 
@@ -44,13 +51,20 @@ function formatDate(iso: string): string {
 
 export function SkiesPage() {
   const { user, loading: authLoading } = useRequireAuth()
+  const { economy, refetch } = useUserEconomy()
   const navigate = useNavigate()
 
+  const [showRewards, setShowRewards] = useState(true)
   const [skies, setSkies] = useState<SkyEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [creating, setCreating] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [onboardingDismissed, setOnboardingDismissed] = useState(
+    () => localStorage.getItem('cielo-estrellado:stardust-onboarding-dismissed') === 'true'
+  )
+  const [purchaseOpen, setPurchaseOpen] = useState(false)
 
   // Edit state
   const [editEntry, setEditEntry] = useState<SkyEntry | null>(null)
@@ -82,6 +96,11 @@ export function SkiesPage() {
 
   if (authLoading || !user) return <LoadingScreen />
 
+  const dismissOnboarding = useCallback(() => {
+    setOnboardingDismissed(true)
+    localStorage.setItem('cielo-estrellado:stardust-onboarding-dismissed', 'true')
+  }, [])
+
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault()
     const title = newTitle.trim()
@@ -96,11 +115,28 @@ export function SkiesPage() {
       setSheetOpen(false)
       setNewTitle('')
       navigate(`/sky/${res.skyId}`)
-    } catch {
-      toast.error('Error al crear el cielo')
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        setSheetOpen(false)
+        setPurchaseOpen(true)
+      } else {
+        toast.error('Error al crear el cielo')
+      }
     } finally {
       setCreating(false)
     }
+  }
+
+  const SKY_SLOT_PRICE = 500
+
+  const handlePurchaseSkySlot = async () => {
+    await api('/api/shop/purchase', {
+      method: 'POST',
+      body: JSON.stringify({ itemId: 'sky-slot' }),
+    })
+    refetch()
+    toast.success('¡Nuevo espacio desbloqueado!')
+    setPurchaseOpen(false)
   }
 
   const handleEdit = async (e: FormEvent) => {
@@ -182,26 +218,45 @@ export function SkiesPage() {
               >
                 {displayName}
               </h1>
+              {economy && economy.loginStreak > 0 && (
+                <BlurFade delay={0.15} duration={0.4}>
+                  <StreakIndicator
+                    currentStreak={economy.loginStreak}
+                    previousStreak={economy.previousStreak}
+                  />
+                </BlurFade>
+              )}
             </div>
           </BlurFade>
 
-          <BlurFade delay={0.25} duration={0.4}>
-            <button
-              onClick={() => navigate('/profile')}
-              className="rounded-full transition-opacity hover:opacity-80"
-            >
-              <Avatar size="default">
-                {user.photoURL ? (
-                  <AvatarImage src={user.photoURL} alt={displayName} />
-                ) : null}
-                <AvatarFallback>{getInitials(user.displayName, user.email)}</AvatarFallback>
-              </Avatar>
-            </button>
-          </BlurFade>
+          <div className="flex items-center gap-3">
+            {economy && (
+              <BlurFade delay={0.2} duration={0.4}>
+                <StardustBalance balance={economy.stardust} onClick={() => setHistoryOpen(true)} />
+              </BlurFade>
+            )}
+            <BlurFade delay={0.25} duration={0.4}>
+              <button
+                onClick={() => navigate('/profile')}
+                className="rounded-full transition-opacity hover:opacity-80"
+              >
+                <Avatar size="default">
+                  {user.photoURL ? (
+                    <AvatarImage src={user.photoURL} alt={displayName} />
+                  ) : null}
+                  <AvatarFallback>{getInitials(user.displayName, user.email)}</AvatarFallback>
+                </Avatar>
+              </button>
+            </BlurFade>
+          </div>
         </header>
 
         {/* Content */}
         <main className="flex-1 overflow-y-auto px-5 pt-4 pb-28 sm:px-8">
+          {economy && !onboardingDismissed && economy.stardust <= 100 && economy.loginStreak <= 1 && (
+            <StardustOnboarding onDismiss={dismissOnboarding} />
+          )}
+
           {loading ? (
             <div className="flex items-center justify-center pt-24">
               <div
@@ -473,6 +528,25 @@ export function SkiesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {showRewards && economy?.rewards && economy.rewards.daily > 0 && (
+        <DailyRewardModal
+          rewards={economy.rewards}
+          previousStreak={economy.previousStreak}
+          onClose={() => setShowRewards(false)}
+        />
+      )}
+
+      <TransactionHistory open={historyOpen} onOpenChange={setHistoryOpen} />
+
+      <PurchaseDialog
+        open={purchaseOpen}
+        onOpenChange={setPurchaseOpen}
+        itemName="Espacio para cielo"
+        price={SKY_SLOT_PRICE}
+        currentBalance={economy?.stardust ?? 0}
+        onConfirm={handlePurchaseSkySlot}
+      />
     </div>
   )
 }

@@ -2,6 +2,7 @@ import type { Request } from 'firebase-functions/v2/https'
 import type { Response } from 'express'
 import { authenticateRequest } from '../middleware/auth.js'
 import { db } from '../lib/firebaseAdmin.js'
+import type { QueryDocumentSnapshot } from '@google-cloud/firestore'
 import type { MemberRecord, MemberRole, UserRecord, IsoDateString } from '../domain/contracts.js'
 
 export async function listMembers(req: Request, res: Response): Promise<void> {
@@ -42,7 +43,7 @@ export async function listMembers(req: Request, res: Response): Promise<void> {
     }
 
     const memberDocs = membersSnap.docs
-    const userRefs = memberDocs.map(doc => db.collection('users').doc(doc.id))
+    const userRefs = memberDocs.map((doc: QueryDocumentSnapshot) => db.collection('users').doc(doc.id))
     const userDocs = await db.getAll(...userRefs)
 
     const members: {
@@ -52,7 +53,7 @@ export async function listMembers(req: Request, res: Response): Promise<void> {
       displayName: string
       email: string | null
       photoURL: string | null
-    }[] = memberDocs.map((mDoc, index) => {
+    }[] = memberDocs.map((mDoc: QueryDocumentSnapshot, index: number) => {
       const member = mDoc.data() as MemberRecord
       const userDoc = userDocs[index]
       const user = userDoc.exists ? (userDoc.data() as UserRecord) : null

@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { api } from '@/lib/api/client'
+import { showStardustToast } from '@/components/economy/StardustToast'
 import { uploadStarImage } from '@/lib/firebase/storage'
 import { STAR_TITLE_MAX_LENGTH, STAR_MESSAGE_MAX_LENGTH, STAR_IMAGE_MAX_SIZE_BYTES, STAR_IMAGE_ALLOWED_TYPES } from '@/domain/policies'
 import { Trash2, ImagePlus } from 'lucide-react'
@@ -96,15 +97,15 @@ export function StarFormSheet({
           body.yNormalized = position.y
         }
 
-        const { starId } = await api<{ starId: string }>(`/api/skies/${skyId}/stars`, {
+        const res = await api<{ starId: string; rewards?: { stardustEarned: number } }>(`/api/skies/${skyId}/stars`, {
           method: 'POST',
           body: JSON.stringify(body),
         })
 
         if (imageFile) {
           try {
-            const path = await uploadStarImage(skyId, starId, imageFile)
-            await api(`/api/skies/${skyId}/stars/${starId}`, {
+            const path = await uploadStarImage(skyId, res.starId, imageFile)
+            await api(`/api/skies/${skyId}/stars/${res.starId}`, {
               method: 'PATCH',
               body: JSON.stringify({ imagePath: path }),
             })
@@ -116,6 +117,9 @@ export function StarFormSheet({
         }
 
         toast.success('Estrella creada')
+        if (res.rewards?.stardustEarned) {
+          showStardustToast(res.rewards.stardustEarned, 'star_creation')
+        }
       } else if (star) {
         const body: Record<string, unknown> = { title: trimTitle }
         if (message.trim()) body.message = message.trim()

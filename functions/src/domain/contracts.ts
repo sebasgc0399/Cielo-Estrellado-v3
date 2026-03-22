@@ -8,11 +8,9 @@ export type MemberStatus = 'active' | 'revoked' | 'pending'
 export type UserStatus = 'active' | 'pending' | 'disabled'
 export type InviteRole = 'editor' | 'viewer'
 export type InviteStatus = 'pending' | 'accepted' | 'revoked' | 'expired'
-export type SkyTheme = 'classic' | 'romantic' | 'deep-night'
 export type SkyDensity = 'low' | 'medium' | 'high'
 
 export interface SkyPersonalization {
-  theme: SkyTheme
   density: SkyDensity
   nebulaEnabled: boolean
   twinkleEnabled: boolean
@@ -29,6 +27,17 @@ export interface UserRecord {
   lastLoginAt: IsoDateString | null
   status: UserStatus
   sessionVersion: number
+  stardust: number
+  maxSkies: number
+  maxMemberships: number
+  lastDailyRewardDate: string | null
+  loginStreak: number
+  previousStreak: number
+  createdStarsToday: number
+  lastStarCreationDate: string | null
+  weeklyBonusWeek: string | null
+  acceptedInvitesToday: number
+  lastInviteAcceptDate: string | null
 }
 
 export interface SkyRecord {
@@ -76,8 +85,23 @@ export interface InviteRecord {
   acceptedAt: IsoDateString | null
 }
 
+export interface InventoryItem {
+  itemId: string
+  category: 'theme' | 'sky-slot'
+  purchasedAt: IsoDateString
+  source: 'shop' | 'gift' | 'promo'
+}
+
+export interface TransactionRecord {
+  type: 'earn' | 'spend'
+  amount: number
+  reason: string
+  itemId: string | null
+  balanceAfter: number
+  createdAt: IsoDateString
+}
+
 export const DEFAULT_SKY_PERSONALIZATION: SkyPersonalization = {
-  theme: 'classic',
   density: 'medium',
   nebulaEnabled: true,
   twinkleEnabled: true,

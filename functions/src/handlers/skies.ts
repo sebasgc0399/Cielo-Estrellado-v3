@@ -4,12 +4,12 @@ import { authenticateRequest } from '../middleware/auth.js'
 import { db } from '../lib/firebaseAdmin.js'
 import { getSkyWithAccess } from '../lib/getSkyWithAccess.js'
 import { SKY_TITLE_MAX_LENGTH } from '../domain/policies.js'
-import type { SkyRecord, MemberRecord, MemberRole, SkyPersonalization, SkyTheme, SkyDensity } from '../domain/contracts.js'
+import type { DocumentReference } from '@google-cloud/firestore'
+import type { SkyRecord, MemberRecord, MemberRole, SkyPersonalization, SkyDensity } from '../domain/contracts.js'
 import { DEFAULT_SKY_PERSONALIZATION } from '../domain/contracts.js'
 
-const VALID_THEMES: SkyTheme[] = ['classic', 'romantic', 'deep-night']
 const VALID_DENSITIES: SkyDensity[] = ['low', 'medium', 'high']
-const PERSONALIZATION_KEYS = ['theme', 'density', 'nebulaEnabled', 'twinkleEnabled', 'shootingStarsEnabled'] as const
+const PERSONALIZATION_KEYS = ['density', 'nebulaEnabled', 'twinkleEnabled', 'shootingStarsEnabled'] as const
 
 export async function getUserSkies(req: Request, res: Response): Promise<void> {
   try {
@@ -27,7 +27,7 @@ export async function getUserSkies(req: Request, res: Response): Promise<void> {
     }
 
     const entries: { skyId: string; role: MemberRole }[] = []
-    const skyRefs: FirebaseFirestore.DocumentReference[] = []
+    const skyRefs: DocumentReference[] = []
 
     for (const doc of membersSnap.docs) {
       const member = doc.data() as MemberRecord
@@ -78,6 +78,25 @@ export async function createSky(req: Request, res: Response): Promise<void> {
 
     if (rawTitle.length > SKY_TITLE_MAX_LENGTH) {
       res.status(400).json({ error: `El título no puede superar ${SKY_TITLE_MAX_LENGTH} caracteres` })
+      return
+    }
+
+    const userSnap = await db.collection('users').doc(decoded.uid).get()
+    const userData = userSnap.data()
+    const maxSkies = typeof userData?.maxSkies === 'number' ? userData.maxSkies : 2
+
+    const ownerSnap = await db.collectionGroup('members')
+      .where('userId', '==', decoded.uid)
+      .where('role', '==', 'owner')
+      .where('status', '==', 'active')
+      .get()
+
+    if (ownerSnap.size >= maxSkies) {
+      res.status(403).json({
+        error: 'Has alcanzado el límite de cielos',
+        maxSkies,
+        currentCount: ownerSnap.size,
+      })
       return
     }
 
@@ -168,10 +187,6 @@ export async function updateSky(req: Request, res: Response): Promise<void> {
         return
       }
 
-      if ('theme' in incoming && (typeof incoming.theme !== 'string' || !VALID_THEMES.includes(incoming.theme as SkyTheme))) {
-        res.status(400).json({ error: 'Tema inválido' })
-        return
-      }
       if ('density' in incoming && (typeof incoming.density !== 'string' || !VALID_DENSITIES.includes(incoming.density as SkyDensity))) {
         res.status(400).json({ error: 'Densidad inválida' })
         return
@@ -256,7 +271,7 @@ export async function deleteSky(req: Request, res: Response): Promise<void> {
     ])
 
     // Process in batches of 500 (Firestore limit)
-    const allOps: Array<{ type: 'delete'; ref: FirebaseFirestore.DocumentReference } | { type: 'update'; ref: FirebaseFirestore.DocumentReference; data: Record<string, unknown> }> = []
+    const allOps: Array<{ type: 'delete'; ref: DocumentReference } | { type: 'update'; ref: DocumentReference; data: Record<string, unknown> }> = []
 
     for (const doc of starsSnap.docs) {
       allOps.push({ type: 'delete', ref: doc.ref })
