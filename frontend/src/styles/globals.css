@@ -75,6 +75,11 @@
             transform: translateZ(0) rotate(360deg);
         }
     }
+
+    @keyframes skeleton-sweep {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+    }
 }
 
 /*
