@@ -1,1 +1,9 @@
 .claude
+node_modules
+dist
+lib
+.env*
+.firebase
+firebase-key.json
+*.log
+*.tsbuildinfo

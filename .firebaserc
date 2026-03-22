@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "masmelito-f209c"
+  },
+  "targets": {
+    "masmelito-f209c": {
+      "hosting": {
+        "web": [
+          "cielo-estrellado-web"
+        ]
+      }
+    }
+  }
+}

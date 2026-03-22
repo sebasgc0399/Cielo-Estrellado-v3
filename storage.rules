@@ -1,0 +1,76 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /stars/{skyId}/{starId}/image {
+
+      function memberRef() {
+        return /databases/(default)/documents/skies/$(skyId)/members/$(request.auth.uid);
+      }
+
+      function starRef() {
+        return /databases/(default)/documents/skies/$(skyId)/stars/$(starId);
+      }
+
+      function isActiveMember() {
+        return firestore.exists(memberRef())
+          && firestore.get(memberRef()).data.status == 'active'
+          && firestore.get(memberRef()).data.role in ['owner', 'editor', 'viewer'];
+      }
+
+      function starExistsAndActive() {
+        return firestore.exists(starRef())
+          && firestore.get(starRef()).data.deletedAt == null;
+      }
+
+      function canAttach() {
+        return firestore.exists(memberRef())
+          && firestore.get(memberRef()).data.status == 'active'
+          && starExistsAndActive()
+          && (
+            firestore.get(memberRef()).data.role == 'owner'
+            || (
+              firestore.get(memberRef()).data.role == 'editor'
+              && firestore.get(starRef()).data.authorUserId == request.auth.uid
+            )
+          );
+      }
+
+      // read: miembro activo + estrella existe y no está soft-deleted
+      allow read: if request.auth != null
+        && isActiveMember()
+        && starExistsAndActive();
+
+      // create, update: permitido SOLO mientras imagePath es null en Firestore
+      // - primer attach: imagePath == null → create aplica
+      // - reintento tras PATCH fallido: imagePath sigue siendo null → update aplica (sobreescribe huérfano)
+      // - tras PATCH exitoso: imagePath != null → bloqueado (replace fuera de scope)
+      allow create, update: if request.auth != null
+        && canAttach()
+        && firestore.get(starRef()).data.imagePath == null
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp)');
+
+      // delete: cerrado en este corte
+      allow delete: if false;
+    }
+
+    // Compatibilidad legacy: imágenes importadas bajo legacy/stars/{fileName}
+    // Solo lectura para miembros activos del cielo shared-legacy-v1.
+    // Writes permanecen cerrados.
+    match /legacy/stars/{fileName} {
+
+      function legacyMemberRef() {
+        return /databases/(default)/documents/skies/shared-legacy-v1/members/$(request.auth.uid);
+      }
+
+      function isActiveSharedLegacyMember() {
+        return firestore.exists(legacyMemberRef())
+          && firestore.get(legacyMemberRef()).data.status == 'active'
+          && firestore.get(legacyMemberRef()).data.role in ['owner', 'editor', 'viewer'];
+      }
+
+      allow read: if request.auth != null && isActiveSharedLegacyMember();
+      allow write: if false;
+    }
+  }
+}
