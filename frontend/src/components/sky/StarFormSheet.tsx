@@ -16,7 +16,7 @@ import {
 import { toast } from 'sonner'
 import { api } from '@/lib/api/client'
 import { uploadStarImage } from '@/lib/firebase/storage'
-import { STAR_TITLE_MAX_LENGTH, STAR_MESSAGE_MAX_LENGTH } from '@/domain/policies'
+import { STAR_TITLE_MAX_LENGTH, STAR_MESSAGE_MAX_LENGTH, STAR_IMAGE_MAX_SIZE_BYTES, STAR_IMAGE_ALLOWED_TYPES } from '@/domain/policies'
 import { Trash2, ImagePlus } from 'lucide-react'
 import type { StarRecord } from '@/domain/contracts'
 
@@ -66,6 +66,14 @@ export function StarFormSheet({
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    if (file.size > STAR_IMAGE_MAX_SIZE_BYTES) {
+      toast.error(`La imagen no puede superar ${STAR_IMAGE_MAX_SIZE_BYTES / 1024 / 1024}MB`)
+      return
+    }
+    if (!STAR_IMAGE_ALLOWED_TYPES.includes(file.type)) {
+      toast.error('Solo se permiten imágenes JPEG, PNG o WebP')
+      return
+    }
     setImageFile(file)
     const reader = new FileReader()
     reader.onload = () => setImagePreview(reader.result as string)
@@ -88,10 +96,25 @@ export function StarFormSheet({
           body.yNormalized = position.y
         }
 
-        await api(`/api/skies/${skyId}/stars`, {
+        const { starId } = await api<{ starId: string }>(`/api/skies/${skyId}/stars`, {
           method: 'POST',
           body: JSON.stringify(body),
         })
+
+        if (imageFile) {
+          try {
+            const path = await uploadStarImage(skyId, starId, imageFile)
+            await api(`/api/skies/${skyId}/stars/${starId}`, {
+              method: 'PATCH',
+              body: JSON.stringify({ imagePath: path }),
+            })
+          } catch {
+            toast.warning('Estrella creada pero la imagen no se pudo subir')
+            onSuccess()
+            return
+          }
+        }
+
         toast.success('Estrella creada')
       } else if (star) {
         const body: Record<string, unknown> = { title: trimTitle }
@@ -219,7 +242,7 @@ export function StarFormSheet({
           )}
 
           {/* Image upload — edit mode only, no existing image */}
-          {mode === 'edit' && star && !star.imagePath && (
+          {(mode === 'create' || (mode === 'edit' && star && !star.imagePath)) && (
             <div className="space-y-1.5">
               <Label
                 className="text-xs font-normal tracking-wide"
