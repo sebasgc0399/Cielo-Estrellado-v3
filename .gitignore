@@ -1,10 +1,9 @@
 .claude
 node_modules
 dist
-# Solo ignorar lib/ en functions (output de compilacion), no en frontend/src/lib/
-/functions/lib
 .env*
 .firebase
 firebase-key.json
 *.log
 *.tsbuildinfo
+functions/lib
