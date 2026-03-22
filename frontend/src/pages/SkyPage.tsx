@@ -230,7 +230,9 @@ export function SkyPage() {
         onOpenChange={setSettingsOpen}
         sky={sky}
         skyId={skyId!}
+        role={role}
         onConfigChange={setSkyConfig}
+        onLeave={() => { toast.success('Has abandonado el cielo'); navigate('/skies') }}
       />
 
       {/* Collaborators (owner only) */}

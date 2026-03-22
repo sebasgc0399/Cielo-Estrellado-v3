@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
+import { motion } from 'motion/react'
 import { ref, getDownloadURL } from 'firebase/storage'
 import { storage } from '@/lib/firebase/client'
 import { BottomSheet } from '@/components/ui/BottomSheet'
+import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
 import { Edit3 } from 'lucide-react'
 import type { StarRecord, MemberRole } from '@/domain/contracts'
@@ -44,15 +46,20 @@ export function StarOverlay({ star, role, currentUserId, onClose, onEdit }: Star
 
   return (
     <BottomSheet open onOpenChange={(open) => { if (!open) onClose() }}>
-      <div className="space-y-4 px-1 pb-4">
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: 'easeOut' }}
+        className="space-y-4 px-2 pb-6"
+      >
         {/* Image */}
         {imageUrl && (
-          <div className="overflow-hidden rounded-lg">
+          <div className="overflow-hidden rounded-xl">
             <img
               src={imageUrl}
               alt={star.title ?? 'Estrella'}
               className="w-full object-cover"
-              style={{ maxHeight: 240 }}
+              style={{ maxHeight: 280 }}
             />
           </div>
         )}
@@ -60,7 +67,7 @@ export function StarOverlay({ star, role, currentUserId, onClose, onEdit }: Star
         {/* Title */}
         {star.title && (
           <h2
-            className="text-lg font-light tracking-wide"
+            className="text-xl font-light leading-tight tracking-wide"
             style={{
               color: 'var(--text-primary)',
               fontFamily: "'Georgia', 'Palatino Linotype', 'Book Antiqua', Palatino, serif",
@@ -73,12 +80,14 @@ export function StarOverlay({ star, role, currentUserId, onClose, onEdit }: Star
         {/* Message */}
         {star.message && (
           <p
-            className="whitespace-pre-wrap text-sm font-light leading-relaxed"
+            className="whitespace-pre-wrap text-sm font-light leading-loose"
             style={{ color: 'var(--text-secondary)' }}
           >
             {star.message}
           </p>
         )}
+
+        <Separator className="opacity-20" />
 
         {/* Meta */}
         <div className="flex items-center justify-between">
@@ -99,7 +108,7 @@ export function StarOverlay({ star, role, currentUserId, onClose, onEdit }: Star
             </Button>
           )}
         </div>
-      </div>
+      </motion.div>
     </BottomSheet>
   )
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, type FormEvent } from 'react'
+import { motion } from 'motion/react'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -141,13 +142,19 @@ export function StarFormSheet({
         onOpenChange={onOpenChange}
         title={mode === 'create' ? 'Nueva estrella' : 'Editar estrella'}
       >
-        <form onSubmit={handleSubmit} className="space-y-4 px-1 pt-2 pb-4">
+        <motion.form
+          onSubmit={handleSubmit}
+          className="space-y-5 px-2 pt-3 pb-6"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+        >
           {/* Title */}
           <div className="space-y-1.5">
             <Label
               htmlFor="star-title"
               className="text-xs font-normal tracking-wide"
-              style={{ color: 'var(--text-secondary)' }}
+              style={{ color: 'var(--text-secondary)', fontFamily: "'Georgia', serif" }}
             >
               Título
             </Label>
@@ -168,7 +175,7 @@ export function StarFormSheet({
             <Label
               htmlFor="star-message"
               className="text-xs font-normal tracking-wide"
-              style={{ color: 'var(--text-secondary)' }}
+              style={{ color: 'var(--text-secondary)', fontFamily: "'Georgia', serif" }}
             >
               Mensaje
               <span className="ml-1" style={{ color: 'var(--text-muted)' }}>(opcional)</span>
@@ -189,7 +196,7 @@ export function StarFormSheet({
             <Label
               htmlFor="star-year"
               className="text-xs font-normal tracking-wide"
-              style={{ color: 'var(--text-secondary)' }}
+              style={{ color: 'var(--text-secondary)', fontFamily: "'Georgia', serif" }}
             >
               Año
               <span className="ml-1" style={{ color: 'var(--text-muted)' }}>(opcional)</span>
@@ -279,7 +286,7 @@ export function StarFormSheet({
               Eliminar estrella
             </Button>
           )}
-        </form>
+        </motion.form>
       </BottomSheet>
 
       {/* Delete confirmation dialog */}

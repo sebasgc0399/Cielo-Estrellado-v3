@@ -6,7 +6,7 @@ import { getUserSkies, createSky, getSky, updateSky } from './handlers/skies.js'
 import { createStar, updateStar, deleteStar } from './handlers/stars.js'
 import { createInviteHandler, listInvites, revokeInviteHandler } from './handlers/invites.js'
 import { previewInvite, acceptInviteHandler } from './handlers/invitePublic.js'
-import { listMembers } from './handlers/members.js'
+import { listMembers, updateMember, leaveSky } from './handlers/members.js'
 
 const router = createRouter([
   { method: 'POST', pattern: '/userSync', handler: userSync },
@@ -18,6 +18,8 @@ const router = createRouter([
   { method: 'PATCH', pattern: '/skies/:skyId/stars/:starId', handler: updateStar },
   { method: 'DELETE', pattern: '/skies/:skyId/stars/:starId', handler: deleteStar },
   { method: 'GET', pattern: '/skies/:skyId/members', handler: listMembers },
+  { method: 'POST', pattern: '/skies/:skyId/members/leave', handler: leaveSky },
+  { method: 'PATCH', pattern: '/skies/:skyId/members/:userId', handler: updateMember },
   { method: 'POST', pattern: '/skies/:skyId/invites', handler: createInviteHandler },
   { method: 'GET', pattern: '/skies/:skyId/invites', handler: listInvites },
   { method: 'DELETE', pattern: '/skies/:skyId/invites/:inviteId', handler: revokeInviteHandler },

@@ -121,7 +121,7 @@
     --bg-void: #05080f;
     --glass-bg: rgba(10, 15, 30, 0.75);
     --glass-border: rgba(255, 255, 255, 0.08);
-    --glass-blur: 20px;
+    --glass-blur: 24px;
     --text-primary: rgba(255, 255, 255, 0.95);
     --text-secondary: rgba(255, 255, 255, 0.70);
     --text-muted: rgba(255, 255, 255, 0.40);

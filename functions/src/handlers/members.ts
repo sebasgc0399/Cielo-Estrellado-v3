@@ -2,7 +2,7 @@ import type { Request } from 'firebase-functions/v2/https'
 import type { Response } from 'express'
 import { authenticateRequest } from '../middleware/auth.js'
 import { db } from '../lib/firebaseAdmin.js'
-import type { MemberRecord, MemberRole, UserRecord, IsoDateString } from '../domain/contracts.js'
+import type { MemberRecord, MemberRole, MemberStatus, UserRecord, IsoDateString } from '../domain/contracts.js'
 
 export async function listMembers(req: Request, res: Response): Promise<void> {
   try {
@@ -71,5 +71,116 @@ export async function listMembers(req: Request, res: Response): Promise<void> {
   } catch (error) {
     console.error('Members list failed:', error)
     res.status(500).json({ error: 'Error interno al listar miembros' })
+  }
+}
+
+const VALID_ROLES: MemberRole[] = ['editor', 'viewer']
+
+export async function updateMember(req: Request, res: Response): Promise<void> {
+  try {
+    const decoded = await authenticateRequest(req)
+    const { skyId, userId } = req.routeParams
+
+    // Verify caller is owner
+    const callerDoc = await db
+      .collection('skies').doc(skyId)
+      .collection('members').doc(decoded.uid)
+      .get()
+
+    if (!callerDoc.exists) {
+      res.status(403).json({ error: 'No tienes acceso a este cielo' })
+      return
+    }
+
+    const caller = callerDoc.data() as MemberRecord
+    if (caller.status !== 'active' || caller.role !== 'owner') {
+      res.status(403).json({ error: 'Solo el propietario puede gestionar miembros' })
+      return
+    }
+
+    // Verify target exists and is active, not owner
+    const targetRef = db
+      .collection('skies').doc(skyId)
+      .collection('members').doc(userId)
+
+    const targetDoc = await targetRef.get()
+    if (!targetDoc.exists) {
+      res.status(404).json({ error: 'Miembro no encontrado' })
+      return
+    }
+
+    const target = targetDoc.data() as MemberRecord
+    if (target.status !== 'active') {
+      res.status(400).json({ error: 'El miembro ya no está activo' })
+      return
+    }
+    if (target.role === 'owner') {
+      res.status(400).json({ error: 'No se puede modificar al propietario' })
+      return
+    }
+
+    const body = req.body as Record<string, unknown>
+    const hasStatus = 'status' in body
+    const hasRole = 'role' in body
+
+    if (hasStatus && hasRole) {
+      res.status(400).json({ error: 'No se puede cambiar status y rol a la vez' })
+      return
+    }
+
+    if (hasStatus) {
+      if (body.status !== 'revoked') {
+        res.status(400).json({ error: 'Solo se permite status "revoked"' })
+        return
+      }
+      await targetRef.update({ status: 'revoked' as MemberStatus })
+    } else if (hasRole) {
+      if (!VALID_ROLES.includes(body.role as MemberRole)) {
+        res.status(400).json({ error: 'Rol inválido. Debe ser "editor" o "viewer"' })
+        return
+      }
+      await targetRef.update({ role: body.role as MemberRole })
+    } else {
+      res.status(400).json({ error: 'Se requiere "status" o "role" en el body' })
+      return
+    }
+
+    res.status(200).json({ ok: true })
+  } catch (error) {
+    console.error('Update member failed:', error)
+    res.status(500).json({ error: 'Error interno al actualizar miembro' })
+  }
+}
+
+export async function leaveSky(req: Request, res: Response): Promise<void> {
+  try {
+    const decoded = await authenticateRequest(req)
+    const { skyId } = req.routeParams
+
+    const memberRef = db
+      .collection('skies').doc(skyId)
+      .collection('members').doc(decoded.uid)
+
+    const memberDoc = await memberRef.get()
+    if (!memberDoc.exists) {
+      res.status(403).json({ error: 'No tienes acceso a este cielo' })
+      return
+    }
+
+    const member = memberDoc.data() as MemberRecord
+    if (member.status !== 'active') {
+      res.status(400).json({ error: 'Ya no eres miembro activo de este cielo' })
+      return
+    }
+    if (member.role === 'owner') {
+      res.status(400).json({ error: 'El propietario no puede abandonar su propio cielo' })
+      return
+    }
+
+    await memberRef.update({ status: 'revoked' as MemberStatus })
+    res.status(200).json({ ok: true })
+  } catch (error) {
+    console.error('Leave sky failed:', error)
+    res.status(500).json({ error: 'Error interno al abandonar el cielo' })
   }
 }

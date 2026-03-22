@@ -1,11 +1,22 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { motion } from 'motion/react'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import { api } from '@/lib/api/client'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import type { SkyRecord, SkyTheme, SkyDensity } from '@/domain/contracts'
+import { Sparkles, Palette, Gauge, LogOut } from 'lucide-react'
+import type { SkyRecord, SkyTheme, SkyDensity, MemberRole } from '@/domain/contracts'
 import type { SkyConfig } from '@/engine/SkyEngine'
 
 interface SkySettingsSheetProps {
@@ -13,7 +24,9 @@ interface SkySettingsSheetProps {
   onOpenChange: (open: boolean) => void
   sky: SkyRecord
   skyId: string
+  role: MemberRole
   onConfigChange: (config: SkyConfig) => void
+  onLeave?: () => void
 }
 
 interface SegmentOption<T extends string> {
@@ -73,7 +86,9 @@ export function SkySettingsSheet({
   onOpenChange,
   sky,
   skyId,
+  role,
   onConfigChange,
+  onLeave,
 }: SkySettingsSheetProps) {
   const [localConfig, setLocalConfig] = useState<SkyConfig>(() => ({
     twinkle: sky.personalization.twinkleEnabled,
@@ -84,6 +99,8 @@ export function SkySettingsSheet({
   }))
   const [theme, setTheme] = useState<SkyTheme>(sky.personalization.theme)
   const [density, setDensity] = useState<SkyDensity>(sky.personalization.density)
+  const [confirmLeave, setConfirmLeave] = useState(false)
+  const [leaving, setLeaving] = useState(false)
 
   const persistTimeout = useRef<ReturnType<typeof setTimeout>>(undefined)
 
@@ -178,75 +195,163 @@ export function SkySettingsSheet({
     updateConfig({ motion: value })
   }
 
+  const handleLeave = async () => {
+    setLeaving(true)
+    try {
+      await api(`/api/skies/${skyId}/members/leave`, { method: 'POST' })
+      setConfirmLeave(false)
+      onOpenChange(false)
+      onLeave?.()
+    } catch {
+      toast.error('Error al abandonar el cielo')
+    } finally {
+      setLeaving(false)
+    }
+  }
+
+  const isOwner = role === 'owner'
+
   return (
-    <BottomSheet open={open} onOpenChange={onOpenChange} title="Configuración">
-      <div className="px-1 pb-6 pt-2 space-y-5">
-        {/* Section A - Efectos visuales */}
-        <div>
-          <h3 className="text-xs tracking-wide uppercase text-muted mb-3">
-            Efectos visuales
-          </h3>
-          <div className="flex items-center justify-between py-2">
-            <span className="text-sm font-light" style={{ color: 'var(--text-secondary)' }}>
-              Nebulosa
-            </span>
-            <Switch checked={localConfig.nebula} onCheckedChange={handleNebulaChange} />
+    <>
+      <BottomSheet
+        open={open}
+        onOpenChange={onOpenChange}
+        title={isOwner ? 'Configuración' : 'Ajustes'}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+          className="px-2 pb-8 pt-2 space-y-5"
+        >
+          {/* Section A - Efectos visuales (owner only) */}
+          {isOwner && (
+            <>
+              <div>
+                <h3 className="flex items-center gap-1.5 text-xs tracking-wide uppercase text-[var(--text-muted)] mb-3">
+                  <Sparkles className="h-4 w-4" />
+                  Efectos visuales
+                </h3>
+                <div className="flex items-center justify-between py-2.5">
+                  <span className="text-sm font-light" style={{ color: 'var(--text-secondary)' }}>
+                    Nebulosa
+                  </span>
+                  <Switch checked={localConfig.nebula} onCheckedChange={handleNebulaChange} />
+                </div>
+                <div className="flex items-center justify-between py-2.5">
+                  <span className="text-sm font-light" style={{ color: 'var(--text-secondary)' }}>
+                    Parpadeo
+                  </span>
+                  <Switch checked={localConfig.twinkle} onCheckedChange={handleTwinkleChange} />
+                </div>
+                <div className="flex items-center justify-between py-2.5">
+                  <span className="text-sm font-light" style={{ color: 'var(--text-secondary)' }}>
+                    Estrellas fugaces
+                  </span>
+                  <Switch checked={localConfig.shootingStars} onCheckedChange={handleShootingStarsChange} />
+                </div>
+              </div>
+
+              <Separator className="my-1 opacity-30" />
+
+              {/* Section B - Apariencia (owner only) */}
+              <div>
+                <h3 className="flex items-center gap-1.5 text-xs tracking-wide uppercase text-[var(--text-muted)] mb-3">
+                  <Palette className="h-4 w-4" />
+                  Apariencia
+                </h3>
+                <label className="text-xs tracking-wide text-[var(--text-muted)] mb-2 block">
+                  Tema
+                </label>
+                <SegmentedControl options={themeOptions} selected={theme} onChange={handleThemeChange} />
+
+                <label className="text-xs tracking-wide text-[var(--text-muted)] mb-2 mt-4 block">
+                  Densidad de estrellas
+                </label>
+                <SegmentedControl options={densityOptions} selected={density} onChange={handleDensityChange} />
+              </div>
+
+              <Separator className="my-1 opacity-30" />
+            </>
+          )}
+
+          {/* Section C - Rendimiento (all roles) */}
+          <div>
+            <h3 className="flex items-center gap-1.5 text-xs tracking-wide uppercase text-[var(--text-muted)] mb-3">
+              <Gauge className="h-4 w-4" />
+              Rendimiento
+            </h3>
+            <div className="flex items-center justify-between py-2.5">
+              <span className="text-sm font-light" style={{ color: 'var(--text-secondary)' }}>
+                Calidad alta
+              </span>
+              <Switch
+                checked={localConfig.quality === 'high'}
+                onCheckedChange={handleQualityChange}
+              />
+            </div>
+
+            <label className="text-xs tracking-wide text-[var(--text-muted)] mb-2 mt-4 block">
+              Movimiento
+            </label>
+            <SegmentedControl options={motionOptions} selected={localConfig.motion} onChange={handleMotionChange} />
           </div>
-          <div className="flex items-center justify-between py-2">
-            <span className="text-sm font-light" style={{ color: 'var(--text-secondary)' }}>
-              Parpadeo
-            </span>
-            <Switch checked={localConfig.twinkle} onCheckedChange={handleTwinkleChange} />
-          </div>
-          <div className="flex items-center justify-between py-2">
-            <span className="text-sm font-light" style={{ color: 'var(--text-secondary)' }}>
-              Estrellas fugaces
-            </span>
-            <Switch checked={localConfig.shootingStars} onCheckedChange={handleShootingStarsChange} />
-          </div>
-        </div>
 
-        <Separator className="my-1 opacity-50" />
+          {/* Leave sky (non-owner only) */}
+          {!isOwner && (
+            <>
+              <Separator className="my-1 opacity-30" />
+              <div>
+                <Button
+                  variant="ghost"
+                  className="w-full gap-2 text-red-400 hover:text-red-300 hover:bg-red-400/10"
+                  onClick={() => setConfirmLeave(true)}
+                >
+                  <LogOut className="h-4 w-4" />
+                  Abandonar este cielo
+                </Button>
+              </div>
+            </>
+          )}
+        </motion.div>
+      </BottomSheet>
 
-        {/* Section B - Apariencia */}
-        <div>
-          <h3 className="text-xs tracking-wide uppercase text-muted mb-3">
-            Apariencia
-          </h3>
-          <label className="text-xs tracking-wide text-muted mb-2 block">
-            Tema
-          </label>
-          <SegmentedControl options={themeOptions} selected={theme} onChange={handleThemeChange} />
-
-          <label className="text-xs tracking-wide text-muted mb-2 mt-4 block">
-            Densidad de estrellas
-          </label>
-          <SegmentedControl options={densityOptions} selected={density} onChange={handleDensityChange} />
-        </div>
-
-        <Separator className="my-1 opacity-50" />
-
-        {/* Section C - Rendimiento */}
-        <div>
-          <h3 className="text-xs tracking-wide uppercase text-muted mb-3">
-            Rendimiento
-          </h3>
-          <div className="flex items-center justify-between py-2">
-            <span className="text-sm font-light" style={{ color: 'var(--text-secondary)' }}>
-              Calidad alta
-            </span>
-            <Switch
-              checked={localConfig.quality === 'high'}
-              onCheckedChange={handleQualityChange}
-            />
-          </div>
-
-          <label className="text-xs tracking-wide text-muted mb-2 mt-4 block">
-            Movimiento
-          </label>
-          <SegmentedControl options={motionOptions} selected={localConfig.motion} onChange={handleMotionChange} />
-        </div>
-      </div>
-    </BottomSheet>
+      {/* Leave confirmation dialog */}
+      <Dialog open={confirmLeave} onOpenChange={setConfirmLeave}>
+        <DialogContent
+          style={{
+            background: 'var(--glass-bg)',
+            backdropFilter: 'blur(var(--glass-blur))',
+            WebkitBackdropFilter: 'blur(var(--glass-blur))',
+            border: '1px solid var(--glass-border)',
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle style={{ color: 'var(--text-primary)' }}>
+              Abandonar cielo
+            </DialogTitle>
+            <DialogDescription style={{ color: 'var(--text-secondary)' }}>
+              Perderás acceso a este cielo y sus estrellas. Necesitarás una nueva invitación para volver.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmLeave(false)}
+              disabled={leaving}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleLeave}
+              disabled={leaving}
+            >
+              {leaving ? 'Saliendo...' : 'Abandonar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
