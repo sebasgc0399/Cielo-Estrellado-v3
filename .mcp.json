@@ -6,7 +6,7 @@
     },
     "magic-ui": {
       "command": "npx",
-      "args": ["-y", "@magicuidesign/cli@latest", "mcp"]
+      "args": ["-y", "magicui-mcp"]
     }
   }
 }
