@@ -40,6 +40,12 @@ export async function getEconomy(req: Request, res: Response): Promise<void> {
     let streakDays = 0
 
     const result = await db.runTransaction(async (transaction: Transaction) => {
+      // Reset en cada intento — previene valores stale en retry por contención
+      rewardsDaily = 0
+      rewardsWeekly = 0
+      rewardsStreak = 0
+      streakDays = 0
+
       const userSnap = await transaction.get(userRef) as unknown as DocumentSnapshot
 
       if (!userSnap.exists) {
