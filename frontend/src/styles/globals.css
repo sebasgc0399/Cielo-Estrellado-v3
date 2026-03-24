@@ -80,6 +80,15 @@
         0% { background-position: -200% 0; }
         100% { background-position: 200% 0; }
     }
+
+    @keyframes fab-glow {
+        0%, 100% {
+            box-shadow: 0 0 20px rgba(140, 180, 255, 0.15), 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        50% {
+            box-shadow: 0 0 28px rgba(140, 180, 255, 0.25), 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+    }
 }
 
 /*
