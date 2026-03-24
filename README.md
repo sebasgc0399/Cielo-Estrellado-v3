@@ -1,6 +1,6 @@
 # Cielo Estrellado
 
-![Versión](https://img.shields.io/badge/versión-5.0.0-blueviolet)
+![Versión](https://img.shields.io/badge/versión-3.0.0-blueviolet)
 ![Tests](https://img.shields.io/badge/tests-114%20pasando-brightgreen)
 ![Node](https://img.shields.io/badge/node-22-339933)
 ![Firebase](https://img.shields.io/badge/firebase-12-FFCA28)
