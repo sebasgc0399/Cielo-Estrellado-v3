@@ -2,11 +2,23 @@ import { NumberTicker } from '@/components/ui/number-ticker'
 
 interface StardustBalanceProps {
   balance: number
+  compact?: boolean
   onClick?: () => void
 }
 
-export function StardustBalance({ balance, onClick }: StardustBalanceProps) {
+function formatCompact(n: number): string {
+  if (n < 10_000) return n.toLocaleString('en-US')
+  if (n < 1_000_000) {
+    const k = n / 1_000
+    return k >= 100 ? `${Math.floor(k)}K` : `${+k.toFixed(1)}K`
+  }
+  const m = n / 1_000_000
+  return m >= 100 ? `${Math.floor(m)}M` : `${+m.toFixed(1)}M`
+}
+
+export function StardustBalance({ balance, compact, onClick }: StardustBalanceProps) {
   const Component = onClick ? 'button' : 'div'
+  const useCompact = compact && balance >= 10_000
 
   return (
     <Component
@@ -22,11 +34,20 @@ export function StardustBalance({ balance, onClick }: StardustBalanceProps) {
       <span className="text-sm" style={{ color: '#FFD700' }}>
         ✦
       </span>
-      <NumberTicker
-        value={balance}
-        className="text-sm font-light tracking-wide tabular-nums"
-        style={{ color: 'var(--text-primary)' }}
-      />
+      {useCompact ? (
+        <span
+          className="text-sm font-light tracking-wide tabular-nums"
+          style={{ color: 'var(--text-primary)' }}
+        >
+          {formatCompact(balance)}
+        </span>
+      ) : (
+        <NumberTicker
+          value={balance}
+          className="text-sm font-light tracking-wide tabular-nums"
+          style={{ color: 'var(--text-primary)' }}
+        />
+      )}
     </Component>
   )
 }

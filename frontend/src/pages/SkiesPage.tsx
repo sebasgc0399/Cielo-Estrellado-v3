@@ -21,7 +21,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { Plus, Sparkles, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Sparkles, Pencil, Trash2, Store } from 'lucide-react'
 import { getInitials } from '@/lib/getInitials'
 import { StardustBalance } from '@/components/economy/StardustBalance'
 import { StreakIndicator } from '@/components/economy/StreakIndicator'
@@ -207,45 +207,33 @@ export function SkiesPage() {
 
       <div className="relative z-10 flex h-full flex-col">
         {/* Header */}
-        <header className="flex items-center justify-between px-5 pt-6 pb-2 sm:px-8 sm:pt-8">
-          <BlurFade delay={0.15} duration={0.5}>
-            <div>
-              <p
-                className="text-sm font-light tracking-wide"
-                style={{ color: 'var(--text-muted)' }}
-              >
-                Bienvenido de vuelta
-              </p>
-              <h1
-                className="text-xl font-light tracking-[0.08em] sm:text-2xl"
-                style={{
-                  color: 'var(--text-primary)',
-                  fontFamily: "'Georgia', 'Palatino Linotype', 'Book Antiqua', Palatino, serif",
-                }}
-              >
-                {displayName}
-              </h1>
-              {economy && economy.loginStreak > 0 && (
-                <BlurFade delay={0.15} duration={0.4}>
-                  <StreakIndicator
-                    currentStreak={economy.loginStreak}
-                    previousStreak={economy.previousStreak}
-                  />
-                </BlurFade>
-              )}
-            </div>
-          </BlurFade>
+        <header className="px-5 pt-6 pb-2 sm:px-8 sm:pt-8">
+          {/* Row 1: Identity — name left, avatar right */}
+          <div className="flex items-center justify-between gap-4">
+            <BlurFade delay={0.15} duration={0.5}>
+              <div className="min-w-0">
+                <p
+                  className="text-sm font-light tracking-wide"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  Bienvenido de vuelta
+                </p>
+                <h1
+                  className="truncate text-xl font-light tracking-[0.08em] sm:text-2xl"
+                  style={{
+                    color: 'var(--text-primary)',
+                    fontFamily: "'Georgia', 'Palatino Linotype', 'Book Antiqua', Palatino, serif",
+                  }}
+                >
+                  {displayName}
+                </h1>
+              </div>
+            </BlurFade>
 
-          <div className="flex items-center gap-3">
-            {economy && (
-              <BlurFade delay={0.2} duration={0.4}>
-                <StardustBalance balance={economy.stardust} onClick={() => setHistoryOpen(true)} />
-              </BlurFade>
-            )}
-            <BlurFade delay={0.25} duration={0.4}>
+            <BlurFade delay={0.2} duration={0.4}>
               <button
                 onClick={() => navigate('/profile')}
-                className="rounded-full transition-opacity hover:opacity-80"
+                className="shrink-0 rounded-full transition-opacity hover:opacity-80"
               >
                 <Avatar size="default">
                   {user.photoURL ? (
@@ -255,6 +243,47 @@ export function SkiesPage() {
                 </Avatar>
               </button>
             </BlurFade>
+          </div>
+
+          {/* Row 2: Economy bar — streak left, balance + store right */}
+          <div className="mt-3 flex items-center justify-between gap-2">
+            <BlurFade delay={0.25} duration={0.4}>
+              <div>
+                {economy && economy.loginStreak > 0 && (
+                  <StreakIndicator
+                    currentStreak={economy.loginStreak}
+                    previousStreak={economy.previousStreak}
+                  />
+                )}
+              </div>
+            </BlurFade>
+
+            <div className="flex items-center gap-2">
+              {economy && (
+                <BlurFade delay={0.28} duration={0.4}>
+                  <StardustBalance balance={economy.stardust} compact onClick={() => setHistoryOpen(true)} />
+                </BlurFade>
+              )}
+              <BlurFade delay={0.3} duration={0.4}>
+                <button
+                  onClick={() => navigate('/shop')}
+                  className="flex items-center gap-1.5 rounded-full px-3 py-1.5 transition-colors hover:bg-white/[0.08]"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                  }}
+                  aria-label="Tienda"
+                >
+                  <Store className="h-3.5 w-3.5" style={{ color: 'var(--text-secondary)' }} />
+                  <span
+                    className="hidden min-[360px]:inline text-xs font-light tracking-wide"
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    Tienda
+                  </span>
+                </button>
+              </BlurFade>
+            </div>
           </div>
         </header>
 
@@ -430,6 +459,7 @@ export function SkiesPage() {
           </div>
           <Button
             type="submit"
+            variant="glass"
             size="lg"
             className="h-11 w-full tracking-wide"
             disabled={!newTitle.trim() || creating}
@@ -473,6 +503,7 @@ export function SkiesPage() {
           </div>
           <Button
             type="submit"
+            variant="glass"
             size="lg"
             className="h-11 w-full tracking-wide"
             disabled={!editTitle.trim() || saving}
@@ -519,14 +550,14 @@ export function SkiesPage() {
           </div>
           <DialogFooter>
             <Button
-              variant="outline"
+              variant="ghost"
               onClick={() => { setDeleteEntry(null); setDeleteConfirmText('') }}
               disabled={deleting}
             >
               Cancelar
             </Button>
             <Button
-              variant="destructive"
+              variant="glass-danger"
               onClick={handleDelete}
               disabled={deleting || deleteConfirmText !== deleteEntry?.sky.title}
             >
