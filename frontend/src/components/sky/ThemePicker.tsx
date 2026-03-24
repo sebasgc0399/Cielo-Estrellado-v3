@@ -33,7 +33,7 @@ export function ThemePicker({ currentThemeId, onThemeChange, inventory }: ThemeP
   }
 
   return (
-    <div className="flex gap-2 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+    <div className="flex gap-2 overflow-x-auto p-1 pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
       {availableThemes.map(theme => {
         const isActive = theme.id === activeId
         const isApplying = applying === theme.id

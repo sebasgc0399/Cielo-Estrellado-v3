@@ -13,6 +13,7 @@ export function BottomSheet({ open, onOpenChange, title, children }: BottomSheet
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
+        initialFocus={false}
         className="rounded-t-[var(--radius-sheet)] border-t border-[var(--glass-border)]"
         style={{
           background: 'var(--glass-bg)',
