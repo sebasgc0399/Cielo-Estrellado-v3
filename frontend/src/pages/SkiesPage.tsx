@@ -412,14 +412,23 @@ export function SkiesPage() {
           <BlurFade delay={0.5} duration={0.4}>
             <button
               onClick={() => setSheetOpen(true)}
-              className="fixed right-6 bottom-6 z-20 flex h-14 w-14 items-center justify-center rounded-full transition-transform duration-200 hover:scale-105 active:scale-95"
+              className="fixed right-6 bottom-6 z-20 flex h-14 w-14 items-center justify-center rounded-full transition-all duration-200 hover:scale-105 active:scale-95 animate-[fab-glow_3s_ease-in-out_infinite]"
               style={{
-                background: 'var(--accent-color)',
-                boxShadow: '0 4px 24px rgba(140, 180, 255, 0.3), 0 0 48px rgba(140, 180, 255, 0.1)',
+                background: 'radial-gradient(circle at 40% 40%, rgba(180, 210, 255, 0.25), rgba(100, 150, 255, 0.08))',
+                border: '1px solid rgba(180, 210, 255, 0.20)',
+                boxShadow: '0 0 20px rgba(140, 180, 255, 0.15), 0 4px 12px rgba(0, 0, 0, 0.3)',
               }}
               aria-label="Crear nuevo cielo"
             >
-              <Plus className="h-6 w-6" style={{ color: 'var(--bg-void)' }} />
+              <span
+                className="text-2xl"
+                style={{
+                  color: 'rgba(200, 220, 255, 0.9)',
+                  filter: 'drop-shadow(0 0 6px rgba(180, 210, 255, 0.5))',
+                }}
+              >
+                ✦
+              </span>
             </button>
           </BlurFade>
         )}
