@@ -89,12 +89,14 @@ export async function acceptInviteHandler(req: Request, res: Response): Promise<
 
     const { skyId } = await acceptInvite(inviteId, decoded.uid)
 
+    const userRef = db.collection('users').doc(decoded.uid)
     let stardustEarned = 0
     try {
-      const freshSnap = await db.collection('users').doc(decoded.uid).get()
-      const freshData = freshSnap.data()
+      const rewardResult = await db.runTransaction(async (transaction) => {
+        const freshSnap = await transaction.get(userRef)
+        const freshData = freshSnap.data()
+        if (!freshData) return null
 
-      if (freshData) {
         const todayUTC = new Date().toISOString().slice(0, 10)
         let acceptedInvitesToday = typeof freshData.acceptedInvitesToday === 'number' ? freshData.acceptedInvitesToday : 0
         const lastInviteAcceptDate = typeof freshData.lastInviteAcceptDate === 'string' ? freshData.lastInviteAcceptDate : null
@@ -105,27 +107,29 @@ export async function acceptInviteHandler(req: Request, res: Response): Promise<
         }
 
         if (acceptedInvitesToday < MAX_INVITE_REWARDS_PER_DAY) {
-          stardustEarned = INVITE_ACCEPTED_REWARD
           acceptedInvitesToday += 1
-          const newBalance = currentStardust + stardustEarned
-
-          const userRef = db.collection('users').doc(decoded.uid)
-          await userRef.update({
+          const newBalance = currentStardust + INVITE_ACCEPTED_REWARD
+          transaction.update(userRef, {
             stardust: newBalance,
             acceptedInvitesToday,
             lastInviteAcceptDate: todayUTC,
           })
-
-          const tx: TransactionRecord = {
-            type: 'earn',
-            amount: stardustEarned,
-            reason: 'invite_accepted',
-            itemId: null,
-            balanceAfter: newBalance,
-            createdAt: new Date().toISOString(),
-          }
-          await userRef.collection('transactions').add(tx)
+          return { reward: INVITE_ACCEPTED_REWARD, newBalance }
         }
+        return null
+      })
+
+      if (rewardResult) {
+        stardustEarned = rewardResult.reward
+        const tx: TransactionRecord = {
+          type: 'earn',
+          amount: rewardResult.reward,
+          reason: 'invite_accepted',
+          itemId: null,
+          balanceAfter: rewardResult.newBalance,
+          createdAt: new Date().toISOString(),
+        }
+        await userRef.collection('transactions').add(tx)
       }
     } catch (rewardError) {
       console.error('Invite accept reward failed (non-blocking):', rewardError)

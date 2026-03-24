@@ -31,6 +31,7 @@ import { StardustOnboarding } from '@/components/economy/StardustOnboarding'
 import { PurchaseDialog } from '@/components/economy/PurchaseDialog'
 import type { SkyRecord, MemberRole } from '@/domain/contracts'
 import { SKY_TITLE_MAX_LENGTH } from '@/domain/policies'
+import { getShopItem } from '@/domain/shopCatalog'
 
 type SkyEntry = { skyId: string; sky: SkyRecord; role: MemberRole }
 type SkiesResponse = { skies: SkyEntry[] }
@@ -126,8 +127,6 @@ export function SkiesPage() {
       setCreating(false)
     }
   }
-
-  const SKY_SLOT_PRICE = 500
 
   const handlePurchaseSkySlot = async () => {
     await api('/api/shop/purchase', {
@@ -543,7 +542,7 @@ export function SkiesPage() {
         open={purchaseOpen}
         onOpenChange={setPurchaseOpen}
         itemName="Espacio para cielo"
-        price={SKY_SLOT_PRICE}
+        price={getShopItem('sky-slot')!.price}
         currentBalance={economy?.stardust ?? 0}
         onConfirm={handlePurchaseSkySlot}
       />

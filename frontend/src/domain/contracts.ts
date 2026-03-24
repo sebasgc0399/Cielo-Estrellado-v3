@@ -47,6 +47,7 @@ export interface SkyRecord {
   privacy: SkyPrivacy
   coverImagePath: string | null
   personalization: SkyPersonalization
+  themeId: string | null
   createdAt: IsoDateString
   updatedAt: IsoDateString
 }

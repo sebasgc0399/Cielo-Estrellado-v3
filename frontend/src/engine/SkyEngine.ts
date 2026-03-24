@@ -1,12 +1,39 @@
 export type QualityLevel = 'high' | 'low'
 export type MotionMode = 'mouse' | 'gyro'
 
+export type StarColorRange = {
+  rMin: number; rMax: number
+  gMin: number; gMax: number
+  bMin: number; bMax: number
+}
+
+export type ThemeColors = {
+  starColorRange: StarColorRange
+  userStarColor: string
+  userStarHighlightColor: string
+  nebulaBaseStartColor: string
+  nebulaBaseEndColor: string
+  nebulaAccentColor: string
+  nebulaOverlayColor: string
+  shootingStarHeadColor: string
+  shootingStarTailColor: string
+  glowColor: string
+  pointerGlowCenterColor: string
+  pointerGlowMidColor: string
+  userStarGlowColor: string
+}
+
+export type ThemeParams = {
+  colors: ThemeColors
+}
+
 export type SkyConfig = {
   twinkle: boolean
   nebula: boolean
   shootingStars: boolean
   quality: QualityLevel
   motion: MotionMode
+  theme?: ThemeParams
 }
 
 export type UserStar = {
@@ -85,6 +112,34 @@ const clamp = (value: number, min: number, max: number) =>
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 const rand = (min: number, max: number) => min + Math.random() * (max - min)
 
+function parseRgba(color: string): [number, number, number, number] {
+  const m = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/)
+  if (!m) return [0, 0, 0, 1]
+  return [parseInt(m[1]), parseInt(m[2]), parseInt(m[3]), m[4] !== undefined ? parseFloat(m[4]) : 1]
+}
+
+// Fallback cuando config.theme es undefined — replica exactamente los valores hardcodeados originales.
+// Los campos con alpha dinámico (shootingStarHeadColor, etc.) se almacenan con alpha en factor=1;
+// el engine aplica globalAlpha=fade/strength en render, por lo que alpha_efectivo = alpha_color × factor.
+const DEFAULT_THEME: ThemeColors = {
+  // starColorRange: rangos del rango efectivo de la fórmula temp original (no los clamp boundaries).
+  // Derivado de: r=clamp(210+temp*2,180,255), g=clamp(220+temp,190,255), b=clamp(255-temp*1.2,205,255)
+  // con temp=rand(-8,12) → efectivo r:[194,234], g:[212,232], b:[241,255]
+  starColorRange: { rMin: 194, rMax: 234, gMin: 212, gMax: 232, bMin: 241, bMax: 255 },
+  userStarColor: 'rgb(255, 245, 225)',
+  userStarHighlightColor: 'rgb(255, 250, 235)',
+  nebulaBaseStartColor: 'rgba(7, 12, 32, 0.9)',
+  nebulaBaseEndColor: 'rgba(4, 6, 16, 0.9)',
+  nebulaAccentColor: 'rgba(70, 120, 200, 0.25)',
+  nebulaOverlayColor: 'rgba(120, 90, 180, 0.18)',
+  shootingStarHeadColor: 'rgba(240, 252, 255, 0.9)',
+  shootingStarTailColor: 'rgba(170, 210, 255, 0.35)',
+  glowColor: 'rgba(138, 170, 255, 0.45)',
+  pointerGlowCenterColor: 'rgba(150, 200, 255, 0.25)',
+  pointerGlowMidColor: 'rgba(110, 150, 255, 0.12)',
+  userStarGlowColor: 'rgba(255, 235, 200, 0.6)',
+}
+
 export class SkyEngine {
   private layers: Record<LayerName, { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; stars: Star[]; settings: LayerSettings }>
   private nebulaCanvas: HTMLCanvasElement
@@ -152,12 +207,21 @@ export class SkyEngine {
     if (!prev || prev.nebula !== next.nebula) {
       this.needsNebula = true
     }
+    if (!prev || prev.theme !== next.theme) {
+      this.needsStars = true
+      this.needsNebula = true
+      this.nebulaTexture = null
+    }
     if (!next.shootingStars) {
       this.shootingStars = []
     }
     if (!prev || prev.shootingStars !== next.shootingStars || prev.quality !== next.quality) {
       this.scheduleNextShooting(performance.now())
     }
+  }
+
+  private getColors(): ThemeColors {
+    return this.config.theme?.colors ?? DEFAULT_THEME
   }
 
   resize(width: number, height: number, dprCap: number) {
@@ -307,11 +371,11 @@ export class SkyEngine {
 
   private createStars(settings: LayerSettings): Star[] {
     const stars: Star[] = []
+    const { rMin, rMax, gMin, gMax, bMin, bMax } = this.getColors().starColorRange
     for (let i = 0; i < settings.count; i += 1) {
-      const temp = rand(-8, 12)
-      const r = clamp(210 + temp * 2, 180, 255)
-      const g = clamp(220 + temp, 190, 255)
-      const b = clamp(255 - temp * 1.2, 205, 255)
+      const r = rand(rMin, rMax)
+      const g = rand(gMin, gMax)
+      const b = rand(bMin, bMax)
       stars.push({
         x: Math.random(),
         y: Math.random(),
@@ -338,7 +402,7 @@ export class SkyEngine {
       twinkleSpeed: rand(0.35, 0.7),
       twinklePhase: rand(0, Math.PI * 2),
       twinkleAmp: hl ? 0.04 : 0.06,
-      color: hl ? 'rgb(255, 250, 235)' : 'rgb(255, 245, 225)',
+      color: hl ? this.getColors().userStarHighlightColor : this.getColors().userStarColor,
       blur: hl ? 6.0 : 5.0,
       pulseSpeed: rand(0.4, 0.7),
     }
@@ -369,11 +433,15 @@ export class SkyEngine {
     const ctx = canvas.getContext('2d')
     if (!ctx) return canvas
 
+    const { nebulaBaseStartColor, nebulaBaseEndColor, nebulaAccentColor, nebulaOverlayColor } = this.getColors()
+
     const base = ctx.createLinearGradient(0, 0, width, height)
-    base.addColorStop(0, 'rgba(7, 12, 32, 0.9)')
-    base.addColorStop(1, 'rgba(4, 6, 16, 0.9)')
+    base.addColorStop(0, nebulaBaseStartColor)
+    base.addColorStop(1, nebulaBaseEndColor)
     ctx.fillStyle = base
     ctx.fillRect(0, 0, width, height)
+
+    const [acR, acG, acB, acA] = parseRgba(nebulaAccentColor)
 
     ctx.globalCompositeOperation = 'screen'
     for (let i = 0; i < 10; i += 1) {
@@ -382,8 +450,8 @@ export class SkyEngine {
       const radius = rand(width * 0.18, width * 0.55)
       const hueShift = rand(-10, 18)
       const grad = ctx.createRadialGradient(x, y, 0, x, y, radius)
-      grad.addColorStop(0, `rgba(${Math.round(70 + hueShift)}, ${Math.round(120 + hueShift)}, 200, 0.25)`)
-      grad.addColorStop(0.6, `rgba(${Math.round(50 + hueShift)}, ${Math.round(90 + hueShift)}, 180, 0.08)`)
+      grad.addColorStop(0, `rgba(${Math.round(acR + hueShift)}, ${Math.round(acG + hueShift)}, ${acB}, ${acA})`)
+      grad.addColorStop(0.6, `rgba(${Math.round(acR - 20 + hueShift)}, ${Math.round(acG - 30 + hueShift)}, ${acB - 20}, ${acA * 0.32})`)
       grad.addColorStop(1, 'rgba(0, 0, 0, 0)')
       ctx.fillStyle = grad
       ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2)
@@ -395,7 +463,7 @@ export class SkyEngine {
       const y = rand(0, height)
       const radius = rand(width * 0.2, width * 0.6)
       const grad = ctx.createRadialGradient(x, y, 0, x, y, radius)
-      grad.addColorStop(0, 'rgba(120, 90, 180, 0.18)')
+      grad.addColorStop(0, nebulaOverlayColor)
       grad.addColorStop(1, 'rgba(0, 0, 0, 0)')
       ctx.fillStyle = grad
       ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2)
@@ -444,7 +512,7 @@ export class SkyEngine {
       ctx.clearRect(0, 0, this.width, this.height)
       ctx.save()
       ctx.shadowBlur = layer.settings.blur
-      ctx.shadowColor = 'rgba(138, 170, 255, 0.45)'
+      ctx.shadowColor = this.getColors().glowColor
 
       for (let i = 0; i < layer.stars.length; i += 1) {
         const star = layer.stars[i]
@@ -491,7 +559,7 @@ export class SkyEngine {
 
         // Core star
         nearCtx.shadowBlur = us.blur
-        nearCtx.shadowColor = 'rgba(255, 235, 200, 0.6)'
+        nearCtx.shadowColor = this.getColors().userStarGlowColor
         nearCtx.globalAlpha = alpha
         nearCtx.fillStyle = us.color
         nearCtx.beginPath()
@@ -527,17 +595,19 @@ export class SkyEngine {
         const fade = lifeRatio < 0.7 ? 1 : (1 - lifeRatio) / 0.3
         const tailX = star.x - star.dirX * star.length
         const tailY = star.y - star.dirY * star.length
+        const { shootingStarTailColor, shootingStarHeadColor } = this.getColors()
         const gradient = this.fxCtx.createLinearGradient(tailX, tailY, star.x, star.y)
-        gradient.addColorStop(0, `rgba(255, 255, 255, 0)`)
-        gradient.addColorStop(0.5, `rgba(170, 210, 255, ${0.35 * fade})`)
-        gradient.addColorStop(1, `rgba(240, 252, 255, ${0.9 * fade})`)
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 0)')
+        gradient.addColorStop(0.5, shootingStarTailColor)
+        gradient.addColorStop(1, shootingStarHeadColor)
+        this.fxCtx.globalAlpha = fade
         this.fxCtx.strokeStyle = gradient
         this.fxCtx.lineWidth = 2
         this.fxCtx.beginPath()
         this.fxCtx.moveTo(tailX, tailY)
         this.fxCtx.lineTo(star.x, star.y)
         this.fxCtx.stroke()
-        this.fxCtx.fillStyle = `rgba(255, 255, 255, ${0.8 * fade})`
+        this.fxCtx.fillStyle = 'rgba(255, 255, 255, 0.8)'
         this.fxCtx.beginPath()
         this.fxCtx.arc(star.x, star.y, 1.6, 0, Math.PI * 2)
         this.fxCtx.fill()
@@ -562,10 +632,12 @@ export class SkyEngine {
         this.pointer.smoothY,
         radius,
       )
-      gradient.addColorStop(0, `rgba(150, 200, 255, ${0.25 * this.pointer.strength})`)
-      gradient.addColorStop(0.5, `rgba(110, 150, 255, ${0.12 * this.pointer.strength})`)
+      const { pointerGlowCenterColor, pointerGlowMidColor } = this.getColors()
+      gradient.addColorStop(0, pointerGlowCenterColor)
+      gradient.addColorStop(0.5, pointerGlowMidColor)
       gradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
       this.fxCtx.save()
+      this.fxCtx.globalAlpha = this.pointer.strength
       this.fxCtx.globalCompositeOperation = 'lighter'
       this.fxCtx.fillStyle = gradient
       this.fxCtx.fillRect(this.pointer.smoothX - radius, this.pointer.smoothY - radius, radius * 2, radius * 2)

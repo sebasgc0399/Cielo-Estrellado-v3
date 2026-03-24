@@ -124,13 +124,14 @@ export async function createStar(req: Request, res: Response): Promise<void> {
 
     await starRef.set(starData)
 
+    const userRef = db.collection('users').doc(decoded.uid)
     let stardustEarned = 0
     try {
-      const userRef = db.collection('users').doc(decoded.uid)
-      const userSnap = await userRef.get()
-      const userData = userSnap.data()
+      const rewardResult = await db.runTransaction(async (transaction) => {
+        const userSnap = await transaction.get(userRef)
+        const userData = userSnap.data()
+        if (!userData) return null
 
-      if (userData) {
         const todayUTC = new Date().toISOString().slice(0, 10)
         let createdStarsToday = typeof userData.createdStarsToday === 'number' ? userData.createdStarsToday : 0
         const lastStarCreationDate = typeof userData.lastStarCreationDate === 'string' ? userData.lastStarCreationDate : null
@@ -151,36 +152,39 @@ export async function createStar(req: Request, res: Response): Promise<void> {
           firstStarReward = FIRST_STAR_BONUS
         }
 
-        stardustEarned = creationReward + firstStarReward
-
-        if (stardustEarned > 0) {
-          const newBalance = currentStardust + stardustEarned
-          await userRef.update({
+        const totalReward = creationReward + firstStarReward
+        if (totalReward > 0) {
+          const newBalance = currentStardust + totalReward
+          transaction.update(userRef, {
             stardust: newBalance,
             createdStarsToday,
             lastStarCreationDate: todayUTC,
           })
-
-          const txNow = new Date().toISOString()
-          const txPromises: Promise<DocumentReference>[] = []
-
-          if (creationReward > 0) {
-            const tx: TransactionRecord = {
-              type: 'earn', amount: creationReward, reason: 'star_creation',
-              itemId: null, balanceAfter: currentStardust + creationReward, createdAt: txNow,
-            }
-            txPromises.push(userRef.collection('transactions').add(tx))
-          }
-          if (firstStarReward > 0) {
-            const tx: TransactionRecord = {
-              type: 'earn', amount: firstStarReward, reason: 'first_star_bonus',
-              itemId: null, balanceAfter: newBalance, createdAt: txNow,
-            }
-            txPromises.push(userRef.collection('transactions').add(tx))
-          }
-
-          await Promise.all(txPromises)
+          return { totalReward, creationReward, firstStarReward, newBalance, currentStardust }
         }
+        return null
+      })
+
+      if (rewardResult) {
+        stardustEarned = rewardResult.totalReward
+        const txNow = new Date().toISOString()
+        const txPromises: Promise<DocumentReference>[] = []
+
+        if (rewardResult.creationReward > 0) {
+          const tx: TransactionRecord = {
+            type: 'earn', amount: rewardResult.creationReward, reason: 'star_creation',
+            itemId: null, balanceAfter: rewardResult.currentStardust + rewardResult.creationReward, createdAt: txNow,
+          }
+          txPromises.push(userRef.collection('transactions').add(tx))
+        }
+        if (rewardResult.firstStarReward > 0) {
+          const tx: TransactionRecord = {
+            type: 'earn', amount: rewardResult.firstStarReward, reason: 'first_star_bonus',
+            itemId: null, balanceAfter: rewardResult.newBalance, createdAt: txNow,
+          }
+          txPromises.push(userRef.collection('transactions').add(tx))
+        }
+        await Promise.all(txPromises)
       }
     } catch (rewardError) {
       console.error('Star creation reward failed (non-blocking):', rewardError)
