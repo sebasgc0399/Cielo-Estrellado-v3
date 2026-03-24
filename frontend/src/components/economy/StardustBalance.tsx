@@ -6,7 +6,7 @@ interface StardustBalanceProps {
   onClick?: () => void
 }
 
-function formatCompact(n: number): string {
+export function formatCompact(n: number): string {
   if (n < 10_000) return n.toLocaleString('en-US')
   if (n < 1_000_000) {
     const k = n / 1_000

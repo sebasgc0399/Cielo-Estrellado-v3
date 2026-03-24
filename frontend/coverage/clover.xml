@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<coverage generated="1774328775413" clover="3.2.0">
+  <project timestamp="1774328775413" name="All files">
+    <metrics statements="158" coveredstatements="84" conditionals="142" coveredconditionals="66" methods="57" coveredmethods="22" elements="357" coveredelements="172" complexity="0" loc="158" ncloc="158" packages="7" files="15" classes="15"/>
+    <package name="components.economy">
+      <metrics statements="64" coveredstatements="35" conditionals="83" coveredconditionals="50" methods="22" coveredmethods="9"/>
+      <file name="DailyRewardModal.tsx" path="D:\Proyectos VS CODE\Cielo_Estrellado\Cielo-Estrellado-v3\frontend\src\components\economy\DailyRewardModal.tsx">
+        <metrics statements="3" coveredstatements="2" conditionals="9" coveredconditionals="9" methods="2" coveredmethods="1"/>
+        <line num="19" count="3" type="stmt"/>
+        <line num="21" count="3" type="stmt"/>
+        <line num="41" count="0" type="stmt"/>
+      </file>
+      <file name="StardustBalance.tsx" path="D:\Proyectos VS CODE\Cielo_Estrellado\Cielo-Estrellado-v3\frontend\src\components\economy\StardustBalance.tsx">
+        <metrics statements="9" coveredstatements="9" conditionals="16" coveredconditionals="15" methods="2" coveredmethods="2"/>
+        <line num="10" count="12" type="cond" truecount="2" falsecount="0"/>
+        <line num="11" count="8" type="cond" truecount="2" falsecount="0"/>
+        <line num="12" count="5" type="stmt"/>
+        <line num="13" count="5" type="cond" truecount="2" falsecount="0"/>
+        <line num="15" count="3" type="stmt"/>
+        <line num="16" count="3" type="cond" truecount="1" falsecount="1"/>
+        <line num="20" count="3" type="cond" truecount="2" falsecount="0"/>
+        <line num="21" count="3" type="cond" truecount="2" falsecount="0"/>
+        <line num="23" count="3" type="stmt"/>
+      </file>
+      <file name="StardustOnboarding.tsx" path="D:\Proyectos VS CODE\Cielo_Estrellado\Cielo-Estrellado-v3\frontend\src\components\economy\StardustOnboarding.tsx">
+        <metrics statements="4" coveredstatements="4" conditionals="0" coveredconditionals="0" methods="3" coveredmethods="3"/>
+        <line num="10" count="2" type="stmt"/>
+        <line num="11" count="2" type="stmt"/>
+        <line num="12" count="2" type="stmt"/>
+        <line num="15" count="2" type="stmt"/>
+      </file>
+      <file name="StreakIndicator.tsx" path="D:\Proyectos VS CODE\Cielo_Estrellado\Cielo-Estrellado-v3\frontend\src\components\economy\StreakIndicator.tsx">
+        <metrics statements="5" coveredstatements="5" conditionals="20" coveredconditionals="18" methods="2" coveredmethods="2"/>
+        <line num="7" count="7" type="cond" truecount="5" falsecount="1"/>
+        <line num="9" count="7" type="stmt"/>
+        <line num="14" count="49" type="stmt"/>
+        <line num="15" count="49" type="cond" truecount="2" falsecount="0"/>
+        <line num="17" count="49" type="stmt"/>
+      </file>
+      <file name="TransactionHistory.tsx" path="D:\Proyectos VS CODE\Cielo_Estrellado\Cielo-Estrellado-v3\frontend\src\components\economy\TransactionHistory.tsx">
+        <metrics statements="43" coveredstatements="15" conditionals="38" coveredconditionals="8" methods="13" coveredmethods="1"/>
+        <line num="11" count="1" type="stmt"/>
+        <line num="24" count="6" type="stmt"/>
+        <line num="25" count="6" type="stmt"/>
+        <line num="26" count="6" type="stmt"/>
+        <line num="27" count="6" type="stmt"/>
+        <line num="28" count="6" type="stmt"/>
+        <line num="30" count="6" type="cond" truecount="2" falsecount="0"/>
+        <line num="31" count="4" type="cond" truecount="2" falsecount="0"/>
+        <line num="33" count="3" type="stmt"/>
+        <line num="34" count="3" type="stmt"/>
+        <line num="35" count="3" type="cond" truecount="2" falsecount="0"/>
+        <line num="37" count="2" type="stmt"/>
+        <line num="38" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="39" count="1" type="stmt"/>
+        <line num="42" count="1" type="stmt"/>
+        <line num="51" count="0" type="stmt"/>
+        <line num="52" count="0" type="stmt"/>
+        <line num="53" count="0" type="stmt"/>
+        <line num="54" count="0" type="stmt"/>
+        <line num="56" count="0" type="stmt"/>
+        <line num="57" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="59" count="0" type="stmt"/>
+        <line num="60" count="0" type="stmt"/>
+        <line num="61" count="0" type="stmt"/>
+        <line num="62" count="0" type="stmt"/>
+        <line num="64" count="0" type="stmt"/>
+        <line num="66" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="67" count="0" type="stmt"/>
+        <line num="68" count="0" type="stmt"/>
+        <line num="71" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="74" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="77" count="0" type="stmt"/>
+        <line num="80" count="0" type="stmt"/>
+        <line num="81" count="0" type="cond" truecount="0" falsecount="4"/>
+        <line num="83" count="0" type="stmt"/>
+        <line num="84" count="0" type="stmt"/>
+        <line num="86" count="0" type="stmt"/>
+        <line num="87" count="0" type="stmt"/>
+        <line num="90" count="0" type="stmt"/>
+        <line num="92" count="0" type="stmt"/>
+        <line num="95" count="0" type="stmt"/>
+        <line num="118" count="0" type="stmt"/>
+        <line num="119" count="0" type="stmt"/>
+      </file>
+    </package>
+    <package name="components.ui">
+      <metrics statements="30" coveredstatements="1" conditionals="22" coveredconditionals="0" methods="18" coveredmethods="0"/>
+      <file name="BottomSheet.tsx" path="D:\Proyectos VS CODE\Cielo_Estrellado\Cielo-Estrellado-v3\frontend\src\components\ui\BottomSheet.tsx">
+        <metrics statements="1" coveredstatements="0" conditionals="2" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="12" count="0" type="stmt"/>
+      </file>
+      <file name="button.tsx" path="D:\Proyectos VS CODE\Cielo_Estrellado\Cielo-Estrellado-v3\frontend\src\components\ui\button.tsx">
+        <metrics statements="2" coveredstatements="1" conditionals="2" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="6" count="1" type="stmt"/>
+        <line num="55" count="0" type="stmt"/>
+      </file>
+      <file name="number-ticker.tsx" path="D:\Proyectos VS CODE\Cielo_Estrellado\Cielo-Estrellado-v3\frontend\src\components\ui\number-ticker.tsx">
+        <metrics statements="17" coveredstatements="0" conditionals="14" coveredconditionals="0" methods="6" coveredmethods="0"/>
+        <line num="23" count="0" type="stmt"/>
+        <line num="24" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="25" count="0" type="stmt"/>
+        <line num="29" count="0" type="stmt"/>
+        <line num="31" count="0" type="stmt"/>
+        <line num="32" count="0" type="stmt"/>
+        <line num="34" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="35" count="0" type="stmt"/>
+        <line num="36" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="40" count="0" type="stmt"/>
+        <line num="41" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="42" count="0" type="stmt"/>
+        <line num="47" count="0" type="stmt"/>
+        <line num="49" count="0" type="stmt"/>
+        <line num="50" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="51" count="0" type="stmt"/>
+        <line num="60" count="0" type="stmt"/>
+      </file>
+      <file name="sheet.tsx" path="D:\Proyectos VS CODE\Cielo_Estrellado\Cielo-Estrellado-v3\frontend\src\components\ui\sheet.tsx">
+        <metrics statements="10" coveredstatements="0" conditionals="4" coveredconditionals="0" methods="10" coveredmethods="0"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="21" count="0" type="stmt"/>
+        <line num="25" count="0" type="stmt"/>
+        <line num="47" count="0" type="stmt"/>
+        <line num="82" count="0" type="stmt"/>
+        <line num="92" count="0" type="stmt"/>
+        <line num="102" count="0" type="stmt"/>
+        <line num="118" count="0" type="stmt"/>
+      </file>
+    </package>
+    <package name="domain">
+      <metrics statements="17" coveredstatements="17" conditionals="8" coveredconditionals="7" methods="3" coveredmethods="3"/>
+      <file name="economy.ts" path="D:\Proyectos VS CODE\Cielo_Estrellado\Cielo-Estrellado-v3\frontend\src\domain\economy.ts">
+        <metrics statements="10" coveredstatements="10" conditionals="0" coveredconditionals="0" methods="0" coveredmethods="0"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="2" count="1" type="stmt"/>
+        <line num="3" count="1" type="stmt"/>
+        <line num="4" count="1" type="stmt"/>
+        <line num="5" count="1" type="stmt"/>
+        <line num="6" count="1" type="stmt"/>
+        <line num="7" count="1" type="stmt"/>
+        <line num="8" count="1" type="stmt"/>
+        <line num="9" count="1" type="stmt"/>
+        <line num="10" count="1" type="stmt"/>
+      </file>
+      <file name="themes.ts" path="D:\Proyectos VS CODE\Cielo_Estrellado\Cielo-Estrellado-v3\frontend\src\domain\themes.ts">
+        <metrics statements="7" coveredstatements="7" conditionals="8" coveredconditionals="7" methods="3" coveredmethods="3"/>
+        <line num="10" count="1" type="stmt"/>
+        <line num="174" count="4" type="cond" truecount="4" falsecount="0"/>
+        <line num="175" count="2" type="stmt"/>
+        <line num="176" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="177" count="1" type="stmt"/>
+        <line num="181" count="3" type="stmt"/>
+        <line num="185" count="1" type="cond" truecount="1" falsecount="1"/>
+      </file>
+    </package>
+    <package name="hooks">
+      <metrics statements="26" coveredstatements="26" conditionals="14" coveredconditionals="8" methods="10" coveredmethods="10"/>
+      <file name="useUserEconomy.ts" path="D:\Proyectos VS CODE\Cielo_Estrellado\Cielo-Estrellado-v3\frontend\src\hooks\useUserEconomy.ts">
+        <metrics statements="26" coveredstatements="26" conditionals="14" coveredconditionals="8" methods="10" coveredmethods="10"/>
+        <line num="24" count="14" type="stmt"/>
+        <line num="25" count="14" type="stmt"/>
+        <line num="26" count="14" type="stmt"/>
+        <line num="27" count="14" type="stmt"/>
+        <line num="28" count="14" type="stmt"/>
+        <line num="30" count="14" type="stmt"/>
+        <line num="31" count="6" type="cond" truecount="1" falsecount="1"/>
+        <line num="33" count="6" type="cond" truecount="2" falsecount="0"/>
+        <line num="34" count="1" type="stmt"/>
+        <line num="35" count="1" type="stmt"/>
+        <line num="38" count="5" type="stmt"/>
+        <line num="39" count="5" type="stmt"/>
+        <line num="40" count="5" type="stmt"/>
+        <line num="42" count="5" type="stmt"/>
+        <line num="44" count="4" type="cond" truecount="1" falsecount="1"/>
+        <line num="45" count="4" type="stmt"/>
+        <line num="48" count="1" type="cond" truecount="1" falsecount="1"/>
+        <line num="49" count="1" type="cond" truecount="1" falsecount="1"/>
+        <line num="50" count="1" type="stmt"/>
+        <line num="53" count="5" type="cond" truecount="1" falsecount="1"/>
+        <line num="56" count="5" type="stmt"/>
+        <line num="59" count="14" type="stmt"/>
+        <line num="60" count="1" type="stmt"/>
+        <line num="63" count="14" type="stmt"/>
+        <line num="64" count="1" type="cond" truecount="1" falsecount="1"/>
+        <line num="67" count="14" type="stmt"/>
+      </file>
+    </package>
+    <package name="lib">
+      <metrics statements="1" coveredstatements="0" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="0"/>
+      <file name="utils.ts" path="D:\Proyectos VS CODE\Cielo_Estrellado\Cielo-Estrellado-v3\frontend\src\lib\utils.ts">
+        <metrics statements="1" coveredstatements="0" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="5" count="0" type="stmt"/>
+      </file>
+    </package>
+    <package name="lib.api">
+      <metrics statements="15" coveredstatements="0" conditionals="13" coveredconditionals="0" methods="3" coveredmethods="0"/>
+      <file name="client.ts" path="D:\Proyectos VS CODE\Cielo_Estrellado\Cielo-Estrellado-v3\frontend\src\lib\api\client.ts">
+        <metrics statements="15" coveredstatements="0" conditionals="13" coveredconditionals="0" methods="3" coveredmethods="0"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="23" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="24" count="0" type="stmt"/>
+        <line num="27" count="0" type="cond" truecount="0" falsecount="4"/>
+        <line num="28" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="31" count="0" type="stmt"/>
+        <line num="36" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="37" count="0" type="stmt"/>
+        <line num="38" count="0" type="stmt"/>
+        <line num="41" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="43" count="0" type="stmt"/>
+      </file>
+    </package>
+    <package name="lib.firebase">
+      <metrics statements="5" coveredstatements="5" conditionals="2" coveredconditionals="1" methods="0" coveredmethods="0"/>
+      <file name="client.ts" path="D:\Proyectos VS CODE\Cielo_Estrellado\Cielo-Estrellado-v3\frontend\src\lib\firebase\client.ts">
+        <metrics statements="5" coveredstatements="5" conditionals="2" coveredconditionals="1" methods="0" coveredmethods="0"/>
+        <line num="6" count="1" type="stmt"/>
+        <line num="15" count="1" type="cond" truecount="1" falsecount="1"/>
+        <line num="17" count="1" type="stmt"/>
+        <line num="18" count="1" type="stmt"/>
+        <line num="19" count="1" type="stmt"/>
+      </file>
+    </package>
+  </project>
+</coverage>

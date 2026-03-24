@@ -20,7 +20,7 @@ const REASON_LABELS: Record<string, string> = {
   shop_purchase: 'Compra',
 }
 
-function formatRelativeDate(iso: string): string {
+export function formatRelativeDate(iso: string): string {
   const date = new Date(iso)
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
