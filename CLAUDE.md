@@ -59,9 +59,20 @@ Formato: que se cambia, por que, que alternativas se descartaron, que se rompe s
 - **Stack:** React 19 + Vite 6 + TypeScript (frontend), Cloud Functions v2 gen2 + Node 22 (backend)
 - **Firebase project:** `masmelito-f209c`
 - **SkyEngine se modifica para aceptar `ThemeParams`** (mini-RFC aprobado en SPEC_v2.md §2.2). El cambio es quirurgico: parametrizar colores hardcodeados. Cualquier cambio adicional al engine sigue requiriendo mini-RFC.
-- **Fase actual:** Implementacion de economia (Polvo Estelar) y sistema de temas (SPEC_v2.md).
+- **Fase actual:** Economia (Fase 1) y temas (Fase 2) completados. 114 tests en verde. Siguiente: Fase 3 (pagos reales + temas avanzados).
 - **Reads directos desde cliente** via `onSnapshot`. Solo writes van por Cloud Functions.
 - **Sin SSR.** SPA pura desplegada en Firebase Hosting.
+
+## Testing
+
+- **Framework:** Vitest v4.1.1 en frontend y functions.
+- **Tests al lado del codigo:** `economy.ts` → `economy.test.ts` en la misma carpeta.
+- **Patron de mocking backend:** `vi.hoisted()` + `vi.mock()` para `firebaseAdmin`, `authenticateRequest`. `mockReset()` en `beforeEach`.
+- **Patron de mocking frontend:** `vi.mock()` para `api()`, `useAuth()`. `@testing-library/react` para hooks y componentes.
+- **Correr tests antes de deploy.** Si un test falla, no deployar. Arreglar el test o el codigo.
+- **Cada feature nueva debe incluir tests.** Minimo: tests unitarios de la logica de negocio. Ideal: tambien tests del handler/hook.
+- **No testear implementacion, testear comportamiento.** El test describe *que* debe pasar, no *como* se implementa.
+- **Guia completa:** `SPEC_Test.md` — fases, archivos, tests especificos, patrones de mocking.
 
 ## Comandos
 
@@ -69,13 +80,17 @@ Formato: que se cambia, por que, que alternativas se descartaron, que se rompe s
 # Frontend
 cd frontend && npm run dev          # Dev server (proxy /api → produccion)
 cd frontend && npm run build        # Build produccion
+cd frontend && npm run test         # Tests en watch mode
+cd frontend && npm run test:run     # Tests single run (CI)
 
 # Functions
 cd functions && npm run build       # Compilar TypeScript
+cd functions && npm run test        # Tests en watch mode
+cd functions && npm run test:run    # Tests single run (CI)
 
-# Deploy
-cd functions && npm run build && cd .. && firebase deploy --only functions
-cd frontend && npm run build && cd .. && firebase deploy --only hosting
+# Deploy (correr tests antes)
+cd functions && npm run test:run && npm run build && cd .. && firebase deploy --only functions
+cd frontend && npm run test:run && npm run build && cd .. && firebase deploy --only hosting
 firebase deploy                     # Todo junto
 ```
 
@@ -91,5 +106,6 @@ firebase deploy                     # Todo junto
 
 - `SPEC.md` — features base (cielos, estrellas, miembros, invitaciones, auth, SkyEngine)
 - `SPEC_v2.md` — economia (Polvo Estelar) y sistema de temas desbloqueables
+- `SPEC_Test.md` — guia de testing (fases, archivos, tests, patrones de mocking)
 
-Consultar ambos antes de implementar cualquier feature.
+Consultar antes de implementar cualquier feature o escribir tests.
