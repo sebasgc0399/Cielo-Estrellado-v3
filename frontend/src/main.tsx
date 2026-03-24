@@ -11,6 +11,7 @@ const SkiesPage = lazy(() => import('./pages/SkiesPage').then(m => ({ default: m
 const SkyPage = lazy(() => import('./pages/SkyPage').then(m => ({ default: m.SkyPage })))
 const InvitePage = lazy(() => import('./pages/InvitePage').then(m => ({ default: m.InvitePage })))
 const ProfilePage = lazy(() => import('./pages/ProfilePage').then(m => ({ default: m.ProfilePage })))
+const ShopPage = lazy(() => import('./pages/ShopPage').then(m => ({ default: m.ShopPage })))
 
 function RootRedirect() {
   const { user, loading } = useAuth()
@@ -29,6 +30,7 @@ function App() {
           <Route path="/sky/:skyId" element={<SkyPage />} />
           <Route path="/invite/:token" element={<InvitePage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/shop" element={<ShopPage />} />
         </Routes>
       </Suspense>
       <Toaster />

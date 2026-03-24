@@ -12,13 +12,17 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { api } from '@/lib/api/client'
+import { api, ApiError } from '@/lib/api/client'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { Sparkles, Palette, Gauge, LogOut, Type } from 'lucide-react'
 import type { SkyRecord, SkyDensity, MemberRole } from '@/domain/contracts'
 import { SKY_TITLE_MAX_LENGTH } from '@/domain/policies'
+import { getThemeById } from '@/domain/themes'
+import { useUserEconomy } from '@/hooks/useUserEconomy'
+import { useNavigate } from 'react-router'
+import { ThemePicker } from './ThemePicker'
 import type { SkyConfig } from '@/engine/SkyEngine'
 
 interface SkySettingsSheetProps {
@@ -100,6 +104,10 @@ export function SkySettingsSheet({
   const [savingTitle, setSavingTitle] = useState(false)
   const [confirmLeave, setConfirmLeave] = useState(false)
   const [leaving, setLeaving] = useState(false)
+  const [activeThemeId, setActiveThemeId] = useState(sky.themeId)
+
+  const { economy } = useUserEconomy()
+  const navigate = useNavigate()
 
   const persistTimeout = useRef<ReturnType<typeof setTimeout>>(undefined)
 
@@ -212,6 +220,29 @@ export function SkySettingsSheet({
     }
   }
 
+  const handleThemeChange = async (themeId: string) => {
+    const themeParams = getThemeById(themeId)
+    setActiveThemeId(themeId)
+    updateConfig({ theme: themeParams ?? undefined })
+
+    try {
+      await api(`/api/skies/${skyId}/theme`, {
+        method: 'PATCH',
+        body: JSON.stringify({ themeId }),
+      })
+      toast.success('Tema aplicado')
+    } catch (error) {
+      setActiveThemeId(sky.themeId)
+      const prevTheme = getThemeById(sky.themeId)
+      updateConfig({ theme: prevTheme ?? undefined })
+      if (error instanceof ApiError) {
+        toast.error(error.message || 'Error al aplicar tema')
+      } else {
+        toast.error('Error de conexión')
+      }
+    }
+  }
+
   const isOwner = role === 'owner'
 
   return (
@@ -243,6 +274,7 @@ export function SkySettingsSheet({
                     className="h-9 flex-1 bg-white/[0.03] border-white/[0.08] text-sm font-light"
                   />
                   <Button
+                    variant="glass"
                     size="sm"
                     className="h-9 shrink-0"
                     onClick={handleSaveTitle}
@@ -251,6 +283,29 @@ export function SkySettingsSheet({
                     {savingTitle ? 'Guardando...' : 'Guardar'}
                   </Button>
                 </div>
+              </div>
+
+              <Separator className="my-1 opacity-30" />
+
+              {/* Section: Tema del cielo */}
+              <div>
+                <h3 className="flex items-center gap-1.5 text-xs tracking-wide uppercase text-[var(--text-muted)] mb-3">
+                  <Palette className="h-4 w-4" />
+                  Tema del cielo
+                </h3>
+                <ThemePicker
+                  currentThemeId={activeThemeId}
+                  onThemeChange={handleThemeChange}
+                  inventory={economy?.inventory ?? []}
+                />
+                <button
+                  type="button"
+                  onClick={() => navigate('/shop')}
+                  className="mt-2 text-xs hover:underline"
+                  style={{ color: 'var(--accent-color)' }}
+                >
+                  Ver más temas →
+                </button>
               </div>
 
               <Separator className="my-1 opacity-30" />
@@ -331,8 +386,8 @@ export function SkySettingsSheet({
               <Separator className="my-1 opacity-30" />
               <div>
                 <Button
-                  variant="ghost"
-                  className="w-full gap-2 text-red-400 hover:text-red-300 hover:bg-red-400/10"
+                  variant="glass-danger"
+                  className="w-full gap-2"
                   onClick={() => setConfirmLeave(true)}
                 >
                   <LogOut className="h-4 w-4" />
@@ -364,14 +419,14 @@ export function SkySettingsSheet({
           </DialogHeader>
           <DialogFooter>
             <Button
-              variant="outline"
+              variant="ghost"
               onClick={() => setConfirmLeave(false)}
               disabled={leaving}
             >
               Cancelar
             </Button>
             <Button
-              variant="destructive"
+              variant="glass-danger"
               onClick={handleLeave}
               disabled={leaving}
             >

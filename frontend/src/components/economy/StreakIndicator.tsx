@@ -7,9 +7,9 @@ export function StreakIndicator({ currentStreak, previousStreak }: StreakIndicat
   const completedDots = currentStreak === 0 ? 0 : currentStreak >= 7 ? 7 : currentStreak % 7 || 7
 
   return (
-    <div className="mt-2 flex flex-col gap-2">
+    <div className="flex items-center gap-2">
       {/* 7-day circles */}
-      <div className="flex gap-1.5">
+      <div className="flex gap-1">
         {Array.from({ length: 7 }, (_, i) => {
           const isCompleted = i < completedDots
           const isCurrent = i === completedDots - 1 && currentStreak > 0
@@ -17,7 +17,7 @@ export function StreakIndicator({ currentStreak, previousStreak }: StreakIndicat
           return (
             <div
               key={i}
-              className="flex h-7 w-7 items-center justify-center rounded-full"
+              className="flex h-[18px] w-[18px] items-center justify-center rounded-full"
               style={
                 isCompleted
                   ? {
@@ -34,7 +34,7 @@ export function StreakIndicator({ currentStreak, previousStreak }: StreakIndicat
               }
             >
               {isCompleted && (
-                <span className="text-[10px]" style={{ color: '#FFD700' }}>
+                <span className="text-[8px]" style={{ color: '#FFD700' }}>
                   ✦
                 </span>
               )}
@@ -43,48 +43,19 @@ export function StreakIndicator({ currentStreak, previousStreak }: StreakIndicat
         })}
       </div>
 
-      {/* Streak text */}
-      <p
-        className="text-xs font-light tracking-wide"
+      {/* Streak text — inline */}
+      <span
+        className="text-xs font-light tracking-wide whitespace-nowrap"
         style={{ color: 'var(--text-muted)' }}
       >
         {currentStreak === 0 && previousStreak > 0 ? (
-          <>Racha anterior: {previousStreak} días</>
+          <>{previousStreak}d</>
         ) : currentStreak >= 7 ? (
-          <>
-            🔥 <span style={{ color: '#FFD700' }}>{currentStreak}</span> días
-          </>
+          <>🔥 <span style={{ color: '#FFD700' }}>{currentStreak}</span>d</>
         ) : (
-          <>{currentStreak} días</>
+          <>{currentStreak}d</>
         )}
-      </p>
-
-      {/* Progress bar toward 30-day streak */}
-      {currentStreak >= 7 && (
-        <div className="flex items-center gap-2">
-          <div
-            className="h-1 flex-1 overflow-hidden rounded-full"
-            style={{ background: 'rgba(255, 255, 255, 0.06)' }}
-          >
-            <div
-              className="h-full rounded-full transition-all duration-500"
-              style={{
-                width: `${Math.min((currentStreak / 30) * 100, 100)}%`,
-                background: 'linear-gradient(90deg, #FFD700, #FFA500)',
-                ...(currentStreak >= 30
-                  ? { boxShadow: '0 0 8px rgba(255, 215, 0, 0.4)' }
-                  : {}),
-              }}
-            />
-          </div>
-          <span
-            className="text-[10px] font-light tracking-wide tabular-nums"
-            style={{ color: 'var(--text-muted)' }}
-          >
-            {currentStreak}/30
-          </span>
-        </div>
-      )}
+      </span>
     </div>
   )
 }

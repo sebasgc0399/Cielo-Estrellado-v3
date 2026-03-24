@@ -292,6 +292,7 @@ export function StarFormSheet({
           {/* Submit */}
           <Button
             type="submit"
+            variant="glass"
             size="lg"
             className="h-11 w-full tracking-wide"
             disabled={!title.trim() || submitting}
@@ -305,7 +306,7 @@ export function StarFormSheet({
           {mode === 'edit' && star && (
             <Button
               type="button"
-              variant="destructive"
+              variant="glass-danger"
               size="lg"
               className="h-11 w-full gap-2 tracking-wide"
               onClick={() => setConfirmDelete(true)}
@@ -338,14 +339,14 @@ export function StarFormSheet({
           </DialogHeader>
           <DialogFooter>
             <Button
-              variant="outline"
+              variant="ghost"
               onClick={() => setConfirmDelete(false)}
               disabled={submitting}
             >
               Cancelar
             </Button>
             <Button
-              variant="destructive"
+              variant="glass-danger"
               onClick={handleDelete}
               disabled={submitting}
             >

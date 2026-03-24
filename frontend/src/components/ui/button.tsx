@@ -18,6 +18,12 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
         link: "text-primary underline-offset-4 hover:underline",
+        glass:
+          "bg-white/[0.06] border-white/[0.12] text-[var(--text-primary)] hover:bg-white/[0.10] hover:border-white/[0.18]",
+        "glass-gold":
+          "bg-[rgba(255,215,0,0.08)] border-[rgba(255,215,0,0.20)] text-[#FFD700] hover:bg-[rgba(255,215,0,0.14)] hover:border-[rgba(255,215,0,0.30)]",
+        "glass-danger":
+          "bg-[rgba(248,113,113,0.08)] border-[rgba(248,113,113,0.20)] text-[rgb(248,113,113)] hover:bg-[rgba(248,113,113,0.14)] hover:border-[rgba(248,113,113,0.30)]",
       },
       size: {
         default:

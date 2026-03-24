@@ -281,9 +281,9 @@ export function CollaboratorsSheet({ open, onOpenChange, skyId }: CollaboratorsS
                     {formatExpiry(invite.expiresAt)}
                   </span>
                   <Button
-                    variant="ghost"
+                    variant="glass-danger"
                     size="sm"
-                    className="text-red-400 hover:text-red-300 hover:bg-red-400/10 h-7 px-2 text-xs"
+                    className="h-7 px-2 text-xs"
                     onClick={() => handleRevoke(invite.inviteId)}
                     disabled={revokingId === invite.inviteId}
                   >
@@ -339,6 +339,7 @@ export function CollaboratorsSheet({ open, onOpenChange, skyId }: CollaboratorsS
 
             {/* Generate invite button */}
             <Button
+              variant="glass"
               className="w-full h-10"
               onClick={handleGenerateInvite}
               disabled={generatingInvite}
@@ -358,7 +359,7 @@ export function CollaboratorsSheet({ open, onOpenChange, skyId }: CollaboratorsS
                   </p>
                 </div>
                 <Button
-                  variant="outline"
+                  variant="glass"
                   className="w-full h-10"
                   onClick={handleCopy}
                 >
@@ -400,14 +401,14 @@ export function CollaboratorsSheet({ open, onOpenChange, skyId }: CollaboratorsS
           </DialogHeader>
           <DialogFooter>
             <Button
-              variant="outline"
+              variant="ghost"
               onClick={() => setKickTarget(null)}
               disabled={kicking}
             >
               Cancelar
             </Button>
             <Button
-              variant="destructive"
+              variant="glass-danger"
               onClick={handleKick}
               disabled={kicking}
             >
