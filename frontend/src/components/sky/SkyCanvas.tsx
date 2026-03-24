@@ -86,7 +86,7 @@ export function SkyCanvas({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // ResizeObserver
+  // ResizeObserver (debounced)
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
@@ -98,9 +98,17 @@ export function SkyCanvas({
     }
 
     handleResize()
-    const observer = new ResizeObserver(handleResize)
+
+    let resizeTimeout: ReturnType<typeof setTimeout> | null = null
+    const observer = new ResizeObserver(() => {
+      if (resizeTimeout) clearTimeout(resizeTimeout)
+      resizeTimeout = setTimeout(handleResize, 150)
+    })
     observer.observe(container)
-    return () => observer.disconnect()
+    return () => {
+      if (resizeTimeout) clearTimeout(resizeTimeout)
+      observer.disconnect()
+    }
   }, [config])
 
   // Sync config to engine
@@ -197,10 +205,11 @@ export function SkyCanvas({
     if (onStarDragEnd && event.pointerType !== 'touch' && !dropPendingRef.current) {
       const hitId = engineRef.current?.hitTest(downX, downY) ?? null
       if (hitId) {
+        if (!engineRef.current) return
         // 1. Capture parallax offset before freezing
-        const offset = engineRef.current!.getUserStarParallaxOffset()
+        const offset = engineRef.current.getUserStarParallaxOffset()
         // 2. Freeze parallax: inputTarget = inputCurrent
-        engineRef.current!.syncInputTargetToCurrent()
+        engineRef.current.syncInputTargetToCurrent()
         // 3. Save snapshot for revert
         originalStarsRef.current = [...userStarsRef.current]
         // 4. Enter DRAG_READY

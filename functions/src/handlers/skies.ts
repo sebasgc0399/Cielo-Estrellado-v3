@@ -4,6 +4,7 @@ import { authenticateRequest } from '../middleware/auth.js'
 import { db } from '../lib/firebaseAdmin.js'
 import { getSkyWithAccess } from '../lib/getSkyWithAccess.js'
 import { SKY_TITLE_MAX_LENGTH } from '../domain/policies.js'
+import { SHOP_CATALOG } from '../domain/shopCatalog.js'
 import type { DocumentReference, QueryDocumentSnapshot } from '@google-cloud/firestore'
 import type { SkyRecord, MemberRecord, MemberRole, SkyPersonalization, SkyDensity, InventoryItem } from '../domain/contracts.js'
 import { DEFAULT_SKY_PERSONALIZATION } from '../domain/contracts.js'
@@ -326,6 +327,16 @@ export async function updateSkyTheme(req: Request, res: Response): Promise<void>
     const themeId = typeof body.themeId === 'string' ? body.themeId.trim() : ''
     if (!themeId) {
       res.status(400).json({ error: 'themeId es requerido' })
+      return
+    }
+
+    const VALID_THEME_IDS = new Set([
+      'classic',
+      ...SHOP_CATALOG.filter((i): i is typeof i & { themeId: string } => i.category === 'theme' && !!i.themeId).map(i => i.themeId),
+    ])
+
+    if (!VALID_THEME_IDS.has(themeId)) {
+      res.status(400).json({ error: 'Tema no reconocido' })
       return
     }
 

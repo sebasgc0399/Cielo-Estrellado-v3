@@ -12,21 +12,41 @@ service cloud.firestore {
         && get(memberRef(skyId)).data.status == 'active';
     }
 
-    match /skies/{skyId}/stars/{starId} {
-      allow read: if isActiveMember(skyId);
-      allow write: if false;
+    // Users — solo Cloud Functions
+    match /users/{uid} {
+      allow read, write: if false;
+
+      match /inventory/{itemId} {
+        allow read, write: if false;
+      }
+
+      match /transactions/{txId} {
+        allow read, write: if false;
+      }
     }
 
-    match /users/{uid}/inventory/{itemId} {
-      allow read: if request.auth != null && request.auth.uid == uid;
-      allow write: if false;
+    // Skies — documento padre solo Cloud Functions
+    match /skies/{skyId} {
+      allow read, write: if false;
+
+      // Stars — miembros activos pueden leer (onSnapshot)
+      match /stars/{starId} {
+        allow read: if isActiveMember(skyId);
+        allow write: if false;
+      }
+
+      // Members — solo Cloud Functions
+      match /members/{memberId} {
+        allow read, write: if false;
+      }
     }
 
-    match /users/{uid}/transactions/{txId} {
-      allow read: if request.auth != null && request.auth.uid == uid;
-      allow write: if false;
+    // Invites — solo Cloud Functions
+    match /invites/{inviteId} {
+      allow read, write: if false;
     }
 
+    // Catch-all deny
     match /{document=**} {
       allow read, write: if false;
     }

@@ -77,7 +77,9 @@ export function StarFormSheet({
     }
     setImageFile(file)
     const reader = new FileReader()
-    reader.onload = () => setImagePreview(reader.result as string)
+    reader.onload = () => {
+      if (typeof reader.result === 'string') setImagePreview(reader.result)
+    }
     reader.readAsDataURL(file)
   }
 

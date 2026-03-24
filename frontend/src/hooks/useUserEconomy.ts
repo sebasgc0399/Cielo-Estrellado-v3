@@ -24,6 +24,7 @@ export function useUserEconomy() {
   const { user, loading: authLoading } = useAuth()
   const [economy, setEconomy] = useState<EconomyData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<Error | null>(null)
   const [fetchCount, setFetchCount] = useState(0)
 
   useEffect(() => {
@@ -36,14 +37,17 @@ export function useUserEconomy() {
 
     let cancelled = false
     setLoading(true)
+    setError(null)
 
     api<EconomyData>('/api/user/economy')
       .then((res) => {
         if (cancelled) return
         setEconomy(res)
       })
-      .catch(() => {
+      .catch((err) => {
         if (cancelled) return
+        setError(err instanceof Error ? err : new Error(String(err)))
+        console.error('Economy fetch failed:', err)
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -60,5 +64,5 @@ export function useUserEconomy() {
     setEconomy((prev) => prev ? { ...prev, stardust: prev.stardust + amount } : prev)
   }, [])
 
-  return { economy, loading, refetch, addStardust }
+  return { economy, loading, error, refetch, addStardust }
 }

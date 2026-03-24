@@ -12,7 +12,6 @@ import type { InviteRole } from '@/domain/contracts'
 
 type ValidPreview = {
   valid: true
-  inviteId: string
   skyId: string
   skyTitle: string
   role: InviteRole
@@ -20,7 +19,6 @@ type ValidPreview = {
 
 type InvalidPreview = {
   valid: false
-  reason: 'not_found' | 'expired' | 'revoked' | 'accepted'
 }
 
 type InvitePreview = ValidPreview | InvalidPreview
@@ -28,13 +26,6 @@ type InvitePreview = ValidPreview | InvalidPreview
 const ROLE_LABELS: Record<InviteRole, string> = {
   editor: 'Editor',
   viewer: 'Lector',
-}
-
-const INVALID_TITLES: Record<InvalidPreview['reason'], string> = {
-  not_found: 'Invitación no encontrada',
-  expired: 'Esta invitación ha expirado',
-  revoked: 'Esta invitación fue revocada',
-  accepted: 'Esta invitación ya fue utilizada',
 }
 
 const glassStyle = {
@@ -65,7 +56,7 @@ export function InvitePage() {
     api<InvitePreview>(`/api/invites/${token}/preview`)
       .then(setPreview)
       .catch(() => {
-        setPreview({ valid: false, reason: 'not_found' })
+        setPreview({ valid: false })
       })
       .finally(() => setLoading(false))
   }, [token])
@@ -176,7 +167,7 @@ export function InvitePage() {
                       className="text-[1.75rem] font-light leading-tight tracking-[0.2em]"
                       style={{ color: 'var(--text-primary)', ...serifFont }}
                     >
-                      {preview ? INVALID_TITLES[preview.reason] : INVALID_TITLES.not_found}
+                      Invitación no disponible
                     </h1>
                   </BlurFade>
 

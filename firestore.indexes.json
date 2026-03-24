@@ -1,6 +1,14 @@
 {
   "indexes": [
     {
+      "collectionGroup": "stars",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "authorUserId", "order": "ASCENDING" },
+        { "fieldPath": "deletedAt", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "members",
       "queryScope": "COLLECTION_GROUP",
       "fields": [

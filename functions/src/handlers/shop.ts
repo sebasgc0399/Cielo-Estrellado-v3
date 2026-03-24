@@ -2,7 +2,7 @@ import type { Request } from 'firebase-functions/v2/https'
 import type { Response } from 'express'
 import { authenticateRequest } from '../middleware/auth.js'
 import { db } from '../lib/firebaseAdmin.js'
-import type { DocumentSnapshot, QueryDocumentSnapshot, Transaction } from '@google-cloud/firestore'
+import type { QueryDocumentSnapshot, Transaction } from '@google-cloud/firestore'
 import type { TransactionRecord, InventoryItem } from '../domain/contracts.js'
 import { getShopItem, SHOP_CATALOG } from '../domain/shopCatalog.js'
 
@@ -34,7 +34,7 @@ export async function purchase(req: Request, res: Response): Promise<void> {
     const nowISO = new Date().toISOString()
 
     const result = await db.runTransaction(async (transaction: Transaction) => {
-      const userSnap = await transaction.get(userRef) as unknown as DocumentSnapshot
+      const userSnap = await transaction.get(userRef)
       if (!userSnap.exists) {
         throw new ShopError('user_not_found', 'Usuario no encontrado')
       }
