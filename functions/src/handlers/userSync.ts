@@ -43,28 +43,40 @@ export async function userSync(req: Request, res: Response): Promise<void> {
         lastLoginAt: now,
       })
 
-      if (rawData.stardust === undefined) {
-        const ownerSnap = await db
-          .collectionGroup('members')
-          .where('userId', '==', decoded.uid)
-          .where('role', '==', 'owner')
-          .where('status', '==', 'active')
-          .get()
+      let migrated = false
 
-        await userRef.update({
-          stardust: WELCOME_BONUS,
-          maxSkies: Math.max(2, ownerSnap.size),
-          maxMemberships: 20,
-          lastDailyRewardDate: null,
-          loginStreak: 0,
-          previousStreak: 0,
-          createdStarsToday: 0,
-          lastStarCreationDate: null,
-          weeklyBonusWeek: null,
-          acceptedInvitesToday: 0,
-          lastInviteAcceptDate: null,
-        })
+      await db.runTransaction(async (transaction) => {
+        const freshSnap = await transaction.get(userRef)
+        const freshData = freshSnap.data()!
 
+        if (freshData.stardust === undefined) {
+          const ownerSnap = await db
+            .collectionGroup('members')
+            .where('userId', '==', decoded.uid)
+            .where('role', '==', 'owner')
+            .where('status', '==', 'active')
+            .get()
+
+          transaction.update(userRef, {
+            stardust: WELCOME_BONUS,
+            maxSkies: Math.max(2, ownerSnap.size),
+            maxMemberships: 20,
+            lastDailyRewardDate: null,
+            loginStreak: 0,
+            previousStreak: 0,
+            createdStarsToday: 0,
+            lastStarCreationDate: null,
+            weeklyBonusWeek: null,
+            acceptedInvitesToday: 0,
+            lastInviteAcceptDate: null,
+            status: 'active',
+            sessionVersion: 1,
+          })
+          migrated = true
+        }
+      })
+
+      if (migrated) {
         await userRef.collection('transactions').add(welcomeTx)
       }
     } else {

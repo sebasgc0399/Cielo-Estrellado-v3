@@ -22,25 +22,15 @@ export async function previewInvite(req: Request, res: Response): Promise<void> 
       .get()
 
     if (snapshot.empty) {
-      res.status(200).json({ valid: false, reason: 'not_found' })
+      res.status(200).json({ valid: false })
       return
     }
 
     const doc = snapshot.docs[0]
     const invite = doc.data() as InviteRecord
 
-    if (invite.status === 'revoked') {
-      res.status(200).json({ valid: false, reason: 'revoked' })
-      return
-    }
-
-    if (invite.status === 'accepted') {
-      res.status(200).json({ valid: false, reason: 'accepted' })
-      return
-    }
-
-    if (invite.status === 'expired' || new Date(invite.expiresAt) <= new Date()) {
-      res.status(200).json({ valid: false, reason: 'expired' })
+    if (invite.status === 'revoked' || invite.status === 'accepted' || invite.status === 'expired' || new Date(invite.expiresAt) <= new Date()) {
+      res.status(200).json({ valid: false })
       return
     }
 
@@ -49,14 +39,13 @@ export async function previewInvite(req: Request, res: Response): Promise<void> 
 
     res.status(200).json({
       valid: true,
-      inviteId: doc.id,
       skyId: invite.skyId,
       skyTitle: sky?.title ?? 'Cielo sin nombre',
       role: invite.role,
     })
   } catch (error) {
-    console.error('Invite preview failed:', error)
-    res.status(200).json({ valid: false, reason: 'not_found' })
+    console.error('Invite preview failed:', error instanceof Error ? error.message : String(error))
+    res.status(200).json({ valid: false })
   }
 }
 
@@ -153,7 +142,7 @@ export async function acceptInviteHandler(req: Request, res: Response): Promise<
           res.status(409).json({ error: 'Esta invitación ya fue utilizada por otra persona' })
           return
         case 'already_member':
-          res.status(409).json({ error: 'already_member', skyId: inviteErr.skyId })
+          res.status(409).json({ error: 'Ya eres miembro de este cielo', skyId: inviteErr.skyId })
           return
         case 'membership_conflict':
           res.status(409).json({ error: 'No se puede completar la invitación. Contacta al propietario.' })

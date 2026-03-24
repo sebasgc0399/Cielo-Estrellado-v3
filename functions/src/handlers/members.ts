@@ -120,6 +120,9 @@ export async function updateMember(req: Request, res: Response): Promise<void> {
       return
     }
 
+    // Guard: prevent leaving sky with 0 owners
+    // Currently owner role changes are blocked above, but this protects against future changes
+    // and revoke operations on owner members
     const body = req.body as Record<string, unknown>
     const hasStatus = 'status' in body
     const hasRole = 'role' in body
@@ -162,25 +165,30 @@ export async function leaveSky(req: Request, res: Response): Promise<void> {
       .collection('skies').doc(skyId)
       .collection('members').doc(decoded.uid)
 
-    const memberDoc = await memberRef.get()
-    if (!memberDoc.exists) {
-      res.status(403).json({ error: 'No tienes acceso a este cielo' })
-      return
-    }
+    await db.runTransaction(async (transaction) => {
+      const memberDoc = await transaction.get(memberRef)
+      if (!memberDoc.exists) {
+        throw Object.assign(new Error('No tienes acceso a este cielo'), { statusCode: 403 })
+      }
 
-    const member = memberDoc.data() as MemberRecord
-    if (member.status !== 'active') {
-      res.status(400).json({ error: 'Ya no eres miembro activo de este cielo' })
-      return
-    }
-    if (member.role === 'owner') {
-      res.status(400).json({ error: 'El propietario no puede abandonar su propio cielo' })
-      return
-    }
+      const member = memberDoc.data() as MemberRecord
+      if (member.status !== 'active') {
+        throw Object.assign(new Error('Ya no eres miembro activo de este cielo'), { statusCode: 400 })
+      }
+      if (member.role === 'owner') {
+        throw Object.assign(new Error('El propietario no puede abandonar su propio cielo'), { statusCode: 400 })
+      }
 
-    await memberRef.update({ status: 'revoked' })
+      transaction.update(memberRef, { status: 'revoked' })
+    })
+
     res.status(200).json({ ok: true })
   } catch (error) {
+    const statusCode = (error as { statusCode?: number }).statusCode
+    if (statusCode) {
+      res.status(statusCode).json({ error: (error as Error).message })
+      return
+    }
     console.error('Leave sky failed:', error)
     res.status(500).json({ error: 'Error interno al abandonar el cielo' })
   }

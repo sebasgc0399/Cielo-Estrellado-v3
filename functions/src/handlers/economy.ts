@@ -2,7 +2,7 @@ import type { Request } from 'firebase-functions/v2/https'
 import type { Response } from 'express'
 import { authenticateRequest } from '../middleware/auth.js'
 import { db } from '../lib/firebaseAdmin.js'
-import type { DocumentReference, DocumentSnapshot, QueryDocumentSnapshot, Transaction } from '@google-cloud/firestore'
+import type { DocumentReference, QueryDocumentSnapshot, Transaction } from '@google-cloud/firestore'
 import type { TransactionRecord, InventoryItem } from '../domain/contracts.js'
 import {
   DAILY_LOGIN_REWARD,
@@ -46,7 +46,7 @@ export async function getEconomy(req: Request, res: Response): Promise<void> {
       rewardsStreak = 0
       streakDays = 0
 
-      const userSnap = await transaction.get(userRef) as unknown as DocumentSnapshot
+      const userSnap = await transaction.get(userRef)
 
       if (!userSnap.exists) {
         return null
@@ -104,17 +104,28 @@ export async function getEconomy(req: Request, res: Response): Promise<void> {
       const totalRewards = rewardsDaily + rewardsWeekly + rewardsStreak
       const newStardust = stardust + totalRewards
 
-      transaction.update(userRef, {
+      const updatePayload: Record<string, unknown> = {
         stardust: newStardust,
         lastDailyRewardDate: todayUTC,
         loginStreak: newStreak,
         previousStreak: newPreviousStreak,
         weeklyBonusWeek: newWeeklyBonusWeek,
-        createdStarsToday: 0,
-        lastStarCreationDate: null,
-        acceptedInvitesToday: 0,
-        lastInviteAcceptDate: null,
-      })
+      }
+
+      const lastStarDate = typeof rawData.lastStarCreationDate === 'string' ? rawData.lastStarCreationDate : null
+      const lastInviteDate = typeof rawData.lastInviteAcceptDate === 'string' ? rawData.lastInviteAcceptDate : null
+
+      if (lastStarDate !== todayUTC) {
+        updatePayload.createdStarsToday = 0
+        updatePayload.lastStarCreationDate = null
+      }
+
+      if (lastInviteDate !== todayUTC) {
+        updatePayload.acceptedInvitesToday = 0
+        updatePayload.lastInviteAcceptDate = null
+      }
+
+      transaction.update(userRef, updatePayload)
 
       return {
         stardust: newStardust,
@@ -170,11 +181,15 @@ export async function getEconomy(req: Request, res: Response): Promise<void> {
       txPromises.push(userRef.collection('transactions').add(tx))
     }
 
+    // Write audit logs (non-critical — balance is already updated)
+    try {
+      await Promise.all(txPromises)
+    } catch (logError) {
+      console.error('Failed to create audit log (balance already updated):', logError instanceof Error ? logError.message : logError)
+    }
+
     // Read inventory
-    const [, inventorySnap] = await Promise.all([
-      Promise.all(txPromises),
-      userRef.collection('inventory').get(),
-    ])
+    const inventorySnap = await userRef.collection('inventory').get()
 
     const inventory: InventoryItem[] = inventorySnap.docs.map(
       (doc: QueryDocumentSnapshot) => doc.data() as InventoryItem,
@@ -223,10 +238,18 @@ export async function getTransactions(req: Request, res: Response): Promise<void
 
     const snap = await query.get()
 
-    const transactions = snap.docs.map((doc: QueryDocumentSnapshot) => ({
-      id: doc.id,
-      ...(doc.data() as TransactionRecord),
-    }))
+    const transactions = snap.docs.map((doc: QueryDocumentSnapshot) => {
+      const data = doc.data()
+      return {
+        id: doc.id,
+        type: data.type as TransactionRecord['type'],
+        amount: data.amount as number,
+        reason: data.reason as string,
+        itemId: (data.itemId as string) ?? null,
+        balanceAfter: data.balanceAfter as number,
+        createdAt: data.createdAt as string,
+      }
+    })
 
     const nextCursor = transactions.length === limit
       ? transactions[transactions.length - 1].id

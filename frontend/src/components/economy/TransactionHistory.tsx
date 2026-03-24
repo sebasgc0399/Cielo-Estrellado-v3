@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { api } from '@/lib/api/client'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { ArrowUp, ArrowDown } from 'lucide-react'
+import { toast } from 'sonner'
 import type { TransactionRecord } from '@/domain/contracts'
 
 type Transaction = TransactionRecord & { id: string }
@@ -66,7 +67,9 @@ export function TransactionHistory({ open, onOpenChange }: TransactionHistoryPro
         setTransactions(res.transactions)
         setNextCursor(res.nextCursor)
       })
-      .catch(() => {})
+      .catch(() => {
+        if (!cancelled) toast.error('Error al cargar el historial')
+      })
       .finally(() => {
         if (!cancelled) setLoading(false)
       })
@@ -83,7 +86,9 @@ export function TransactionHistory({ open, onOpenChange }: TransactionHistoryPro
         setTransactions((prev) => [...prev, ...res.transactions])
         setNextCursor(res.nextCursor)
       })
-      .catch(() => {})
+      .catch(() => {
+        toast.error('Error al cargar más transacciones')
+      })
       .finally(() => setLoadingMore(false))
   }, [nextCursor, loadingMore])
 

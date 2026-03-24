@@ -12,29 +12,31 @@ export class RevokeError extends Error {
 }
 
 export async function revokeInvite(inviteId: string, skyId: string): Promise<void> {
-  const inviteRef = db.collection('invites').doc(inviteId)
-  const inviteSnap = await inviteRef.get()
+  await db.runTransaction(async (transaction) => {
+    const inviteRef = db.collection('invites').doc(inviteId)
+    const inviteSnap = await transaction.get(inviteRef)
 
-  if (!inviteSnap.exists) {
-    throw new RevokeError('invite_not_found', 'Invitación no encontrada')
-  }
+    if (!inviteSnap.exists) {
+      throw new RevokeError('invite_not_found', 'Invitación no encontrada')
+    }
 
-  const invite = inviteSnap.data() as InviteRecord
+    const invite = inviteSnap.data() as InviteRecord
 
-  if (invite.skyId !== skyId) {
-    throw new RevokeError('invite_not_found', 'Invitación no encontrada')
-  }
-  if (invite.status === 'accepted') {
-    throw new RevokeError('invite_already_used', 'Invitación ya utilizada')
-  }
-  if (invite.status === 'revoked') {
-    throw new RevokeError('invite_already_revoked', 'Invitación ya revocada')
-  }
+    if (invite.skyId !== skyId) {
+      throw new RevokeError('invite_not_found', 'Invitación no encontrada')
+    }
+    if (invite.status === 'accepted') {
+      throw new RevokeError('invite_already_used', 'Invitación ya utilizada')
+    }
+    if (invite.status === 'revoked') {
+      throw new RevokeError('invite_already_revoked', 'Invitación ya revocada')
+    }
 
-  const now = new Date().toISOString()
-  if (invite.expiresAt < now) {
-    throw new RevokeError('invite_expired', 'Invitación expirada')
-  }
+    const now = new Date().toISOString()
+    if (invite.expiresAt < now) {
+      throw new RevokeError('invite_expired', 'Invitación expirada')
+    }
 
-  await inviteRef.update({ status: 'revoked' })
+    transaction.update(inviteRef, { status: 'revoked' })
+  })
 }

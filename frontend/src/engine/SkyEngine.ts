@@ -207,7 +207,7 @@ export class SkyEngine {
     if (!prev || prev.nebula !== next.nebula) {
       this.needsNebula = true
     }
-    if (!prev || prev.theme !== next.theme) {
+    if (!prev || JSON.stringify(prev.theme) !== JSON.stringify(next.theme)) {
       this.needsStars = true
       this.needsNebula = true
       this.nebulaTexture = null

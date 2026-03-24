@@ -77,6 +77,11 @@ export function SkiesPage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [deleting, setDeleting] = useState(false)
 
+  const dismissOnboarding = useCallback(() => {
+    setOnboardingDismissed(true)
+    localStorage.setItem('cielo-estrellado:stardust-onboarding-dismissed', 'true')
+  }, [])
+
   useEffect(() => {
     if (!user) return
     let cancelled = false
@@ -96,11 +101,6 @@ export function SkiesPage() {
   }, [user])
 
   if (authLoading || !user) return <LoadingScreen />
-
-  const dismissOnboarding = useCallback(() => {
-    setOnboardingDismissed(true)
-    localStorage.setItem('cielo-estrellado:stardust-onboarding-dismissed', 'true')
-  }, [])
 
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault()
@@ -129,13 +129,21 @@ export function SkiesPage() {
   }
 
   const handlePurchaseSkySlot = async () => {
-    await api('/api/shop/purchase', {
-      method: 'POST',
-      body: JSON.stringify({ itemId: 'sky-slot' }),
-    })
-    refetch()
-    toast.success('¡Nuevo espacio desbloqueado!')
-    setPurchaseOpen(false)
+    try {
+      await api<{ newBalance: number; itemId: string }>('/api/shop/purchase', {
+        method: 'POST',
+        body: JSON.stringify({ itemId: 'sky-slot' }),
+      })
+      refetch()
+      toast.success('¡Nuevo espacio desbloqueado!')
+      setPurchaseOpen(false)
+    } catch (error) {
+      if (error instanceof ApiError) {
+        toast.error(error.message || 'Error al comprar el espacio')
+      } else {
+        toast.error('Error de conexión')
+      }
+    }
   }
 
   const handleEdit = async (e: FormEvent) => {
