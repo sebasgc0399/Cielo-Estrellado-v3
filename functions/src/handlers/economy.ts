@@ -67,6 +67,7 @@ export async function getEconomy(req: Request, res: Response): Promise<void> {
           previousStreak,
           lastDailyRewardDate,
           weeklyBonusWeek,
+          previousStardust: stardust,
         }
       }
 
@@ -121,6 +122,7 @@ export async function getEconomy(req: Request, res: Response): Promise<void> {
         previousStreak: newPreviousStreak,
         lastDailyRewardDate: todayUTC,
         weeklyBonusWeek: newWeeklyBonusWeek,
+        previousStardust: stardust,
       }
     })
 
@@ -138,7 +140,7 @@ export async function getEconomy(req: Request, res: Response): Promise<void> {
         amount: rewardsDaily,
         reason: 'daily_login',
         itemId: null,
-        balanceAfter: result.stardust - rewardsWeekly - rewardsStreak,
+        balanceAfter: result.previousStardust + rewardsDaily,
         createdAt: nowISO,
       }
       txPromises.push(userRef.collection('transactions').add(tx))
@@ -150,7 +152,7 @@ export async function getEconomy(req: Request, res: Response): Promise<void> {
         amount: rewardsWeekly,
         reason: 'weekly_bonus',
         itemId: null,
-        balanceAfter: result.stardust - rewardsStreak,
+        balanceAfter: result.previousStardust + rewardsDaily + rewardsWeekly,
         createdAt: nowISO,
       }
       txPromises.push(userRef.collection('transactions').add(tx))
@@ -162,7 +164,7 @@ export async function getEconomy(req: Request, res: Response): Promise<void> {
         amount: rewardsStreak,
         reason: streakDays === 7 ? 'streak_7' : 'streak_30',
         itemId: null,
-        balanceAfter: result.stardust,
+        balanceAfter: result.previousStardust + rewardsDaily + rewardsWeekly + rewardsStreak,
         createdAt: nowISO,
       }
       txPromises.push(userRef.collection('transactions').add(tx))

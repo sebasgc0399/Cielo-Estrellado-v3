@@ -16,6 +16,7 @@ import { api } from '@/lib/api/client'
 import { toast } from 'sonner'
 import { ArrowLeft } from 'lucide-react'
 import type { SkyConfig } from '@/engine/SkyEngine'
+import { getThemeById } from '@/domain/themes'
 
 export function SkyPage() {
   const { skyId } = useParams<{ skyId: string }>()
@@ -38,12 +39,14 @@ export function SkyPage() {
   // Initialize SkyConfig from personalization when sky loads
   useEffect(() => {
     if (sky) {
+      const themeParams = getThemeById(sky.themeId)
       setSkyConfig(prev => ({
         twinkle: sky.personalization.twinkleEnabled,
         nebula: sky.personalization.nebulaEnabled,
         shootingStars: sky.personalization.shootingStarsEnabled,
         quality: prev?.quality ?? 'high',
         motion: prev?.motion ?? 'mouse',
+        theme: themeParams ?? undefined,
       }))
     }
   }, [sky])

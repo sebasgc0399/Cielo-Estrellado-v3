@@ -4,8 +4,8 @@ import { authenticateRequest } from '../middleware/auth.js'
 import { db } from '../lib/firebaseAdmin.js'
 import { getSkyWithAccess } from '../lib/getSkyWithAccess.js'
 import { SKY_TITLE_MAX_LENGTH } from '../domain/policies.js'
-import type { DocumentReference } from '@google-cloud/firestore'
-import type { SkyRecord, MemberRecord, MemberRole, SkyPersonalization, SkyDensity } from '../domain/contracts.js'
+import type { DocumentReference, QueryDocumentSnapshot } from '@google-cloud/firestore'
+import type { SkyRecord, MemberRecord, MemberRole, SkyPersonalization, SkyDensity, InventoryItem } from '../domain/contracts.js'
 import { DEFAULT_SKY_PERSONALIZATION } from '../domain/contracts.js'
 
 const VALID_DENSITIES: SkyDensity[] = ['low', 'medium', 'high']
@@ -110,6 +110,7 @@ export async function createSky(req: Request, res: Response): Promise<void> {
       privacy: 'private',
       coverImagePath: null,
       personalization: DEFAULT_SKY_PERSONALIZATION,
+      themeId: null,
       createdAt: now,
       updatedAt: now,
     }
@@ -302,5 +303,49 @@ export async function deleteSky(req: Request, res: Response): Promise<void> {
   } catch (error) {
     console.error('deleteSky failed:', error)
     res.status(500).json({ error: 'Error interno al eliminar el cielo' })
+  }
+}
+
+export async function updateSkyTheme(req: Request, res: Response): Promise<void> {
+  try {
+    const decoded = await authenticateRequest(req)
+    const { skyId } = req.routeParams
+
+    const access = await getSkyWithAccess(skyId, decoded.uid)
+    if (!access.ok) {
+      res.status(access.reason === 'error' ? 500 : 404).json({ error: 'Cielo no encontrado' })
+      return
+    }
+
+    if (access.member.role !== 'owner') {
+      res.status(403).json({ error: 'Solo el propietario puede cambiar el tema' })
+      return
+    }
+
+    const body = req.body as Record<string, unknown>
+    const themeId = typeof body.themeId === 'string' ? body.themeId.trim() : ''
+    if (!themeId) {
+      res.status(400).json({ error: 'themeId es requerido' })
+      return
+    }
+
+    if (themeId !== 'classic') {
+      const inventorySnap = await db.collection('users').doc(decoded.uid).collection('inventory').get()
+      const ownedItemIds = new Set(
+        inventorySnap.docs.map((doc: QueryDocumentSnapshot) => (doc.data() as InventoryItem).itemId),
+      )
+      if (!ownedItemIds.has(`theme-${themeId}`)) {
+        res.status(403).json({ error: 'No posees este tema' })
+        return
+      }
+    }
+
+    const now = new Date().toISOString()
+    await db.collection('skies').doc(skyId).update({ themeId, updatedAt: now })
+
+    res.status(200).json({ themeId })
+  } catch (error) {
+    console.error('updateSkyTheme failed:', error)
+    res.status(500).json({ error: 'Error interno al cambiar el tema' })
   }
 }
