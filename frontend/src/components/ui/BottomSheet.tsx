@@ -26,7 +26,7 @@ export function BottomSheet({ open, onOpenChange, title, children }: BottomSheet
             <SheetTitle className="text-[var(--text-primary)]">{title}</SheetTitle>
           </SheetHeader>
         )}
-        <div className="max-h-[70vh] overflow-y-auto overflow-x-hidden">
+        <div className="max-h-[70vh] overflow-y-auto overflow-x-hidden overscroll-none">
           {children}
         </div>
       </SheetContent>
