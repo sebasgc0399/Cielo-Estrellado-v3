@@ -25,6 +25,35 @@ export type ThemeColors = {
 
 export type ThemeParams = {
   colors: ThemeColors
+  effects?: ThemeEffects
+}
+
+export type MeteorShowerEffect = {
+  frequency: number      // meteoros por segundo (0.5 = uno cada 2s)
+  trailLength: number    // longitud del trail en px
+  colors: string[]       // colores del meteoro (se elige random)
+}
+
+export type FirefliesEffect = {
+  count: number          // cantidad de luciérnagas (15-40)
+  color: string          // color principal
+  glowRadius: number     // radio del glow (3-8px)
+  speed: number          // velocidad de movimiento (0.5 = lento, 1.5 = rápido)
+}
+
+export type ConstellationLinesEffect = {
+  maxDistance: number     // distancia máxima como fracción del canvas (0.08 = 8%)
+  color: string          // color de las líneas
+  opacity: number        // opacidad base de las líneas (0.1-0.3)
+}
+
+export type StarShape = 'circle' | 'heart' | 'crystal' | 'flower'
+
+export type ThemeEffects = {
+  meteorShower?: MeteorShowerEffect
+  fireflies?: FirefliesEffect
+  constellationLines?: ConstellationLinesEffect
+  starShape?: StarShape
 }
 
 export type SkyConfig = {
@@ -167,6 +196,11 @@ export class SkyEngine {
   private needsUserStars = false
   private readonly userStarParallax = 0
   private onFps?: (fps: number) => void
+  private fireflies: Array<{
+    x: number; y: number
+    vx: number; vy: number
+    phase: number; pulseSpeed: number
+  }> = []
 
   constructor(canvases: LayerCanvases, options: EngineOptions = {}) {
     const farCtx = canvases.far.getContext('2d')
@@ -218,10 +252,30 @@ export class SkyEngine {
     if (!prev || prev.shootingStars !== next.shootingStars || prev.quality !== next.quality) {
       this.scheduleNextShooting(performance.now())
     }
+    // Inicializar fireflies si el tema las tiene
+    const effects = next.theme?.effects
+    if (effects?.fireflies) {
+      if (this.fireflies.length !== effects.fireflies.count) {
+        this.fireflies = Array.from({ length: effects.fireflies.count }, () => ({
+          x: Math.random(),
+          y: Math.random(),
+          vx: (Math.random() - 0.5) * 0.0003,
+          vy: (Math.random() - 0.5) * 0.0003,
+          phase: Math.random() * Math.PI * 2,
+          pulseSpeed: 0.3 + Math.random() * 0.4,
+        }))
+      }
+    } else {
+      this.fireflies = []
+    }
   }
 
   private getColors(): ThemeColors {
     return this.config.theme?.colors ?? DEFAULT_THEME
+  }
+
+  private getEffects(): ThemeEffects | undefined {
+    return this.config.theme?.effects
   }
 
   resize(width: number, height: number, dprCap: number) {
@@ -484,15 +538,18 @@ export class SkyEngine {
     }
     const minDelay = this.config.quality === 'high' ? 8000 : 14000
     const maxDelay = this.config.quality === 'high' ? 16000 : 26000
-    this.nextShootingTime = now + rand(minDelay, maxDelay)
+    const frequency = Math.max(0.1, this.getEffects()?.meteorShower?.frequency ?? 1)
+    this.nextShootingTime = now + rand(minDelay, maxDelay) / frequency
   }
 
   private spawnShootingStar() {
+    const meteor = this.getEffects()?.meteorShower
     const angle = rand(Math.PI * 0.2, Math.PI * 0.32)
     const speed = rand(900, 1300)
     const dirX = Math.cos(angle)
     const dirY = Math.sin(angle)
-    const length = rand(160, 260)
+    const baseLength = rand(160, 260)
+    const length = meteor ? baseLength * meteor.trailLength : baseLength
     const life = rand(0.9, 1.4)
     this.shootingStars.push({
       x: rand(-this.width * 0.1, this.width * 0.35),
@@ -505,6 +562,57 @@ export class SkyEngine {
       life,
       age: 0,
     })
+  }
+
+  private drawHeart(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
+    const s = size
+    ctx.moveTo(x, y + s * 0.3)
+    ctx.bezierCurveTo(x, y - s * 0.3, x - s, y - s * 0.3, x - s, y + s * 0.1)
+    ctx.bezierCurveTo(x - s, y + s * 0.7, x, y + s * 1.1, x, y + s * 1.1)
+    ctx.bezierCurveTo(x, y + s * 1.1, x + s, y + s * 0.7, x + s, y + s * 0.1)
+    ctx.bezierCurveTo(x + s, y - s * 0.3, x, y - s * 0.3, x, y + s * 0.3)
+  }
+
+  private drawCrystal(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
+    const w = size
+    const h = size * 1.4
+    ctx.moveTo(x, y - h)
+    ctx.lineTo(x + w, y)
+    ctx.lineTo(x, y + h)
+    ctx.lineTo(x - w, y)
+    ctx.closePath()
+  }
+
+  private drawFlower(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
+    const petalR = size * 0.5
+    const petalDist = size * 0.45
+    for (let i = 0; i < 5; i += 1) {
+      const angle = (i * Math.PI * 2) / 5 - Math.PI / 2
+      const px = x + Math.cos(angle) * petalDist
+      const py = y + Math.sin(angle) * petalDist
+      ctx.moveTo(px + petalR, py)
+      ctx.arc(px, py, petalR, 0, Math.PI * 2)
+    }
+    // Centro
+    ctx.moveTo(x + petalR * 0.4, y)
+    ctx.arc(x, y, petalR * 0.4, 0, Math.PI * 2)
+  }
+
+  private drawStarShape(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, shape: StarShape) {
+    ctx.beginPath()
+    switch (shape) {
+      case 'heart':
+        this.drawHeart(ctx, x, y, size)
+        break
+      case 'crystal':
+        this.drawCrystal(ctx, x, y, size)
+        break
+      case 'flower':
+        this.drawFlower(ctx, x, y, size)
+        break
+      default:
+        ctx.arc(x, y, size, 0, Math.PI * 2)
+    }
   }
 
   private renderStars(time: number) {
@@ -539,6 +647,7 @@ export class SkyEngine {
       const nearCtx = this.layers.near.ctx
       const uOffsetX = this.inputCurrent.x * this.width * this.userStarParallax
       const uOffsetY = this.inputCurrent.y * this.height * this.userStarParallax
+      const starShape = this.getEffects()?.starShape ?? 'circle'
 
       nearCtx.save()
       for (const us of this.userStarCache) {
@@ -557,8 +666,7 @@ export class SkyEngine {
         nearCtx.shadowBlur = 0
         nearCtx.globalAlpha = alpha * 0.12
         nearCtx.fillStyle = us.color
-        nearCtx.beginPath()
-        nearCtx.arc(px, py, r * 2.5, 0, Math.PI * 2)
+        this.drawStarShape(nearCtx, px, py, r * 2.5, starShape)
         nearCtx.fill()
 
         // Core star
@@ -566,8 +674,7 @@ export class SkyEngine {
         nearCtx.shadowColor = this.getColors().userStarGlowColor
         nearCtx.globalAlpha = alpha
         nearCtx.fillStyle = us.color
-        nearCtx.beginPath()
-        nearCtx.arc(px, py, r, 0, Math.PI * 2)
+        this.drawStarShape(nearCtx, px, py, r, starShape)
         nearCtx.fill()
       }
       nearCtx.restore()
@@ -600,10 +707,17 @@ export class SkyEngine {
         const tailX = star.x - star.dirX * star.length
         const tailY = star.y - star.dirY * star.length
         const { shootingStarTailColor, shootingStarHeadColor } = this.getColors()
+        const meteor = this.getEffects()?.meteorShower
+        const headColor = meteor?.colors.length
+          ? meteor.colors[Math.floor(Math.random() * meteor.colors.length)]
+          : shootingStarHeadColor
+        const tailColor = meteor?.colors.length
+          ? meteor.colors[Math.floor(Math.random() * meteor.colors.length)]
+          : shootingStarTailColor
         const gradient = this.fxCtx.createLinearGradient(tailX, tailY, star.x, star.y)
         gradient.addColorStop(0, 'rgba(255, 255, 255, 0)')
-        gradient.addColorStop(0.5, shootingStarTailColor)
-        gradient.addColorStop(1, shootingStarHeadColor)
+        gradient.addColorStop(0.5, tailColor)
+        gradient.addColorStop(1, headColor)
         this.fxCtx.globalAlpha = fade
         this.fxCtx.strokeStyle = gradient
         this.fxCtx.lineWidth = 2
@@ -645,6 +759,100 @@ export class SkyEngine {
       this.fxCtx.globalCompositeOperation = 'lighter'
       this.fxCtx.fillStyle = gradient
       this.fxCtx.fillRect(this.pointer.smoothX - radius, this.pointer.smoothY - radius, radius * 2, radius * 2)
+      this.fxCtx.restore()
+    }
+
+    // Fireflies effect
+    const effects = this.getEffects()
+    if (this.fireflies.length > 0 && effects?.fireflies) {
+      const ff = effects.fireflies
+
+      this.fxCtx.save()
+      this.fxCtx.globalCompositeOperation = 'lighter'
+
+      for (const fly of this.fireflies) {
+        // Movimiento errático tipo luciérnaga
+        fly.vx += (Math.random() - 0.5) * 0.00005
+        fly.vy += (Math.random() - 0.5) * 0.00005
+
+        fly.x += fly.vx * ff.speed
+        fly.y += fly.vy * ff.speed
+
+        // Clamp velocidad
+        const maxV = 0.0005 * ff.speed
+        fly.vx = Math.max(-maxV, Math.min(maxV, fly.vx))
+        fly.vy = Math.max(-maxV, Math.min(maxV, fly.vy))
+
+        // Wrap around
+        if (fly.x < 0) fly.x = 1
+        if (fly.x > 1) fly.x = 0
+        if (fly.y < 0) fly.y = 1
+        if (fly.y > 1) fly.y = 0
+
+        // Pulso de brillo
+        fly.phase += fly.pulseSpeed * 0.016
+        const brightness = 0.3 + 0.7 * Math.pow(Math.sin(fly.phase), 2)
+
+        // Render
+        const px = fly.x * this.width
+        const py = fly.y * this.height
+
+        this.fxCtx.globalAlpha = brightness
+        const grad = this.fxCtx.createRadialGradient(px, py, 0, px, py, ff.glowRadius)
+        grad.addColorStop(0, ff.color)
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0)')
+        this.fxCtx.fillStyle = grad
+        this.fxCtx.fillRect(px - ff.glowRadius, py - ff.glowRadius, ff.glowRadius * 2, ff.glowRadius * 2)
+
+        // Core brillante
+        this.fxCtx.beginPath()
+        this.fxCtx.arc(px, py, 1.2, 0, Math.PI * 2)
+        this.fxCtx.fillStyle = 'rgba(255, 255, 255, 0.9)'
+        this.fxCtx.fill()
+      }
+
+      this.fxCtx.restore()
+    }
+
+    // Constellation lines effect
+    if (effects?.constellationLines && this.layers.near.stars.length > 0) {
+      const cl = effects.constellationLines
+      const maxDist = cl.maxDistance * Math.min(this.width, this.height)
+      const nearSettings = this.layers.near.settings
+      const offsetX = this.inputCurrent.x * this.width * nearSettings.parallax
+      const offsetY = this.inputCurrent.y * this.height * nearSettings.parallax
+      const nearStars = this.layers.near.stars
+
+      this.fxCtx.save()
+      this.fxCtx.globalCompositeOperation = 'lighter'
+      this.fxCtx.strokeStyle = cl.color
+      this.fxCtx.lineWidth = 0.5
+
+      for (let i = 0; i < nearStars.length; i += 1) {
+        const starA = nearStars[i]
+        const ax = starA.x * this.width + offsetX
+        const ay = starA.y * this.height + offsetY
+
+        for (let j = i + 1; j < nearStars.length; j += 1) {
+          const starB = nearStars[j]
+          const bx = starB.x * this.width + offsetX
+          const by = starB.y * this.height + offsetY
+
+          const dx = ax - bx
+          const dy = ay - by
+          const dist = Math.sqrt(dx * dx + dy * dy)
+
+          if (dist < maxDist) {
+            const lineAlpha = 1 - dist / maxDist
+            this.fxCtx.globalAlpha = cl.opacity * lineAlpha
+            this.fxCtx.beginPath()
+            this.fxCtx.moveTo(ax, ay)
+            this.fxCtx.lineTo(bx, by)
+            this.fxCtx.stroke()
+          }
+        }
+      }
+
       this.fxCtx.restore()
     }
   }

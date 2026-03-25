@@ -1,10 +1,11 @@
-import type { ThemeParams, ThemeColors } from '@/engine/SkyEngine'
+import type { ThemeParams, ThemeColors, ThemeEffects } from '@/engine/SkyEngine'
 
 interface ThemeDefinition {
   id: string
   name: string
   description: string
   colors: ThemeColors
+  effects?: ThemeEffects
 }
 
 const THEMES: Record<string, ThemeDefinition> = {
@@ -168,13 +169,172 @@ const THEMES: Record<string, ThemeDefinition> = {
       userStarGlowColor: 'rgba(235, 245, 255, 0.6)',
     },
   },
+  'meteor-shower': {
+    id: 'meteor-shower',
+    name: 'Lluvia de Meteoros',
+    description: 'Meteoros frecuentes con trails ardientes',
+    colors: {
+      starColorRange: { rMin: 230, rMax: 255, gMin: 140, gMax: 190, bMin: 80, bMax: 130 },
+      userStarColor: 'rgb(255, 200, 150)',
+      userStarHighlightColor: 'rgb(255, 220, 180)',
+      nebulaBaseStartColor: 'rgba(25, 10, 5, 0.9)',
+      nebulaBaseEndColor: 'rgba(15, 5, 3, 0.9)',
+      nebulaAccentColor: 'rgba(200, 80, 30, 0.25)',
+      nebulaOverlayColor: 'rgba(180, 60, 40, 0.18)',
+      shootingStarHeadColor: 'rgba(255, 200, 100, 0.95)',
+      shootingStarTailColor: 'rgba(255, 120, 50, 0.5)',
+      glowColor: 'rgba(255, 150, 80, 0.45)',
+      pointerGlowCenterColor: 'rgba(255, 160, 90, 0.25)',
+      pointerGlowMidColor: 'rgba(230, 120, 60, 0.12)',
+      userStarGlowColor: 'rgba(255, 200, 150, 0.6)',
+    },
+    effects: {
+      meteorShower: {
+        frequency: 2.5,
+        trailLength: 1.8,
+        colors: [
+          'rgba(255, 180, 80, 0.9)',
+          'rgba(255, 120, 40, 0.9)',
+          'rgba(255, 220, 140, 0.9)',
+          'rgba(255, 80, 30, 0.85)',
+        ],
+      },
+    },
+  },
+  'fireflies': {
+    id: 'fireflies',
+    name: 'Luciérnagas',
+    description: 'Partículas doradas flotando entre las estrellas',
+    colors: {
+      starColorRange: { rMin: 180, rMax: 230, gMin: 210, gMax: 250, bMin: 100, bMax: 160 },
+      userStarColor: 'rgb(220, 245, 180)',
+      userStarHighlightColor: 'rgb(235, 250, 200)',
+      nebulaBaseStartColor: 'rgba(8, 18, 10, 0.9)',
+      nebulaBaseEndColor: 'rgba(4, 10, 6, 0.9)',
+      nebulaAccentColor: 'rgba(100, 180, 60, 0.25)',
+      nebulaOverlayColor: 'rgba(80, 140, 50, 0.18)',
+      shootingStarHeadColor: 'rgba(220, 255, 180, 0.9)',
+      shootingStarTailColor: 'rgba(150, 220, 100, 0.35)',
+      glowColor: 'rgba(180, 230, 120, 0.45)',
+      pointerGlowCenterColor: 'rgba(190, 235, 130, 0.25)',
+      pointerGlowMidColor: 'rgba(150, 200, 100, 0.12)',
+      userStarGlowColor: 'rgba(220, 245, 180, 0.6)',
+    },
+    effects: {
+      fireflies: {
+        count: 25,
+        color: 'rgba(255, 230, 100, 0.8)',
+        glowRadius: 6,
+        speed: 0.8,
+      },
+    },
+  },
+  'constellations': {
+    id: 'constellations',
+    name: 'Constelaciones',
+    description: 'Líneas conectan las estrellas más cercanas',
+    colors: {
+      starColorRange: { rMin: 190, rMax: 230, gMin: 200, gMax: 240, bMin: 235, bMax: 255 },
+      userStarColor: 'rgb(210, 225, 255)',
+      userStarHighlightColor: 'rgb(225, 235, 255)',
+      nebulaBaseStartColor: 'rgba(5, 8, 20, 0.9)',
+      nebulaBaseEndColor: 'rgba(3, 5, 12, 0.9)',
+      nebulaAccentColor: 'rgba(100, 140, 220, 0.25)',
+      nebulaOverlayColor: 'rgba(120, 130, 200, 0.18)',
+      shootingStarHeadColor: 'rgba(220, 235, 255, 0.9)',
+      shootingStarTailColor: 'rgba(160, 190, 240, 0.35)',
+      glowColor: 'rgba(160, 190, 240, 0.45)',
+      pointerGlowCenterColor: 'rgba(170, 200, 245, 0.25)',
+      pointerGlowMidColor: 'rgba(140, 170, 220, 0.12)',
+      userStarGlowColor: 'rgba(210, 225, 255, 0.6)',
+    },
+    effects: {
+      constellationLines: {
+        maxDistance: 0.12,
+        color: 'rgba(180, 210, 255, 0.6)',
+        opacity: 0.2,
+      },
+    },
+  },
+  'enchanted-garden': {
+    id: 'enchanted-garden',
+    name: 'Jardín Encantado',
+    description: 'Estrellas en forma de flor con paleta floral',
+    colors: {
+      starColorRange: { rMin: 220, rMax: 255, gMin: 140, gMax: 190, bMin: 180, bMax: 230 },
+      userStarColor: 'rgb(255, 200, 220)',
+      userStarHighlightColor: 'rgb(255, 220, 235)',
+      nebulaBaseStartColor: 'rgba(20, 8, 18, 0.9)',
+      nebulaBaseEndColor: 'rgba(12, 4, 10, 0.9)',
+      nebulaAccentColor: 'rgba(200, 80, 140, 0.25)',
+      nebulaOverlayColor: 'rgba(220, 100, 160, 0.18)',
+      shootingStarHeadColor: 'rgba(255, 210, 230, 0.9)',
+      shootingStarTailColor: 'rgba(230, 150, 180, 0.35)',
+      glowColor: 'rgba(240, 160, 200, 0.45)',
+      pointerGlowCenterColor: 'rgba(245, 170, 210, 0.25)',
+      pointerGlowMidColor: 'rgba(220, 130, 180, 0.12)',
+      userStarGlowColor: 'rgba(255, 200, 220, 0.6)',
+    },
+    effects: {
+      starShape: 'flower',
+    },
+  },
+  'diamond-crystal': {
+    id: 'diamond-crystal',
+    name: 'Cristal de Diamante',
+    description: 'Estrellas cristalinas en un cielo helado',
+    colors: {
+      starColorRange: { rMin: 180, rMax: 220, gMin: 220, gMax: 250, bMin: 240, bMax: 255 },
+      userStarColor: 'rgb(200, 235, 255)',
+      userStarHighlightColor: 'rgb(220, 245, 255)',
+      nebulaBaseStartColor: 'rgba(5, 10, 22, 0.9)',
+      nebulaBaseEndColor: 'rgba(3, 6, 14, 0.9)',
+      nebulaAccentColor: 'rgba(60, 160, 230, 0.25)',
+      nebulaOverlayColor: 'rgba(80, 180, 240, 0.18)',
+      shootingStarHeadColor: 'rgba(210, 240, 255, 0.9)',
+      shootingStarTailColor: 'rgba(140, 200, 245, 0.35)',
+      glowColor: 'rgba(120, 200, 250, 0.45)',
+      pointerGlowCenterColor: 'rgba(140, 210, 250, 0.25)',
+      pointerGlowMidColor: 'rgba(100, 180, 230, 0.12)',
+      userStarGlowColor: 'rgba(200, 235, 255, 0.6)',
+    },
+    effects: {
+      starShape: 'crystal',
+    },
+  },
+  'celestial-hearts': {
+    id: 'celestial-hearts',
+    name: 'Corazones Celestiales',
+    description: 'Estrellas en forma de corazón bajo un cielo romántico',
+    colors: {
+      starColorRange: { rMin: 230, rMax: 255, gMin: 130, gMax: 180, bMin: 150, bMax: 200 },
+      userStarColor: 'rgb(255, 190, 210)',
+      userStarHighlightColor: 'rgb(255, 210, 225)',
+      nebulaBaseStartColor: 'rgba(22, 5, 12, 0.9)',
+      nebulaBaseEndColor: 'rgba(14, 3, 8, 0.9)',
+      nebulaAccentColor: 'rgba(200, 50, 100, 0.25)',
+      nebulaOverlayColor: 'rgba(220, 70, 120, 0.18)',
+      shootingStarHeadColor: 'rgba(255, 200, 220, 0.9)',
+      shootingStarTailColor: 'rgba(230, 130, 170, 0.35)',
+      glowColor: 'rgba(240, 140, 180, 0.45)',
+      pointerGlowCenterColor: 'rgba(245, 150, 190, 0.25)',
+      pointerGlowMidColor: 'rgba(220, 120, 160, 0.12)',
+      userStarGlowColor: 'rgba(255, 190, 210, 0.6)',
+    },
+    effects: {
+      starShape: 'heart',
+    },
+  },
 }
 
 export function getThemeById(themeId: string | null): ThemeParams | null {
   if (!themeId || themeId === 'classic') return null
   const theme = THEMES[themeId]
   if (!theme) return null
-  return { colors: theme.colors }
+  return {
+    colors: theme.colors,
+    ...(theme.effects ? { effects: theme.effects } : {}),
+  }
 }
 
 export function getAllThemes(): ThemeDefinition[] {
