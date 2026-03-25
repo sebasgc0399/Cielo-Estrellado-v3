@@ -4,6 +4,7 @@ const REASON_LABELS: Record<string, string> = {
   star_creation: 'Estrella creada',
   first_star_bonus: '¡Primera estrella!',
   invite_accepted: 'Invitación aceptada',
+  purchase: 'Compra de Polvo Estelar',
 }
 
 export function showStardustToast(amount: number, reason: string): void {

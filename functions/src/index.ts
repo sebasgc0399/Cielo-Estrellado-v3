@@ -9,6 +9,7 @@ import { previewInvite, acceptInviteHandler } from './handlers/invitePublic.js'
 import { listMembers, updateMember, leaveSky } from './handlers/members.js'
 import { getEconomy, getTransactions } from './handlers/economy.js'
 import { purchase, getCatalog } from './handlers/shop.js'
+import { createPayment, wompiWebhook, getPaymentStatus } from './handlers/payments.js'
 
 const router = createRouter([
   { method: 'POST', pattern: '/userSync', handler: userSync },
@@ -16,6 +17,9 @@ const router = createRouter([
   { method: 'GET', pattern: '/user/transactions', handler: getTransactions },
   { method: 'GET', pattern: '/shop/catalog', handler: getCatalog },
   { method: 'POST', pattern: '/shop/purchase', handler: purchase },
+  { method: 'POST', pattern: '/payments/create', handler: createPayment },
+  { method: 'POST', pattern: '/payments/webhook', handler: wompiWebhook },
+  { method: 'GET', pattern: '/payments/:reference/status', handler: getPaymentStatus },
   { method: 'GET', pattern: '/skies', handler: getUserSkies },
   { method: 'POST', pattern: '/skies', handler: createSky },
   { method: 'GET', pattern: '/skies/:skyId', handler: getSky },

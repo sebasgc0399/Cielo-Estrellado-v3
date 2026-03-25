@@ -46,6 +46,11 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Payments — solo Cloud Functions
+    match /payments/{paymentId} {
+      allow read, write: if false;
+    }
+
     // Catch-all deny
     match /{document=**} {
       allow read, write: if false;
