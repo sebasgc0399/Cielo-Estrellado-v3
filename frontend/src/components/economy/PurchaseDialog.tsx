@@ -24,6 +24,7 @@ interface PurchaseDialogProps {
   price: number
   currentBalance: number
   onConfirm: () => Promise<void>
+  onBuyStardust?: () => void
 }
 
 export function PurchaseDialog({
@@ -33,6 +34,7 @@ export function PurchaseDialog({
   price,
   currentBalance,
   onConfirm,
+  onBuyStardust,
 }: PurchaseDialogProps) {
   const [purchasing, setPurchasing] = useState(false)
   const canAfford = currentBalance >= price
@@ -129,6 +131,16 @@ export function PurchaseDialog({
                   <li>• Racha de 7 días: +{STREAK_7_BONUS} ✦</li>
                   <li>• Invitar amigos: +{INVITE_ACCEPTED_REWARD} ✦</li>
                 </ul>
+                {onBuyStardust && (
+                  <button
+                    type="button"
+                    onClick={onBuyStardust}
+                    className="mt-3 text-xs font-medium tracking-wide hover:underline"
+                    style={{ color: '#FFD700' }}
+                  >
+                    Comprar Polvo Estelar con dinero real →
+                  </button>
+                )}
               </div>
             </>
           )}

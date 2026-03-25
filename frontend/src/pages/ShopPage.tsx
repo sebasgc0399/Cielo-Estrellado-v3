@@ -9,6 +9,7 @@ import { LoadingScreen } from '@/components/ui/LoadingScreen'
 import { StardustBalance } from '@/components/economy/StardustBalance'
 import { PurchaseDialog } from '@/components/economy/PurchaseDialog'
 import { ThemePreviewCard } from '@/components/shop/ThemePreviewCard'
+import { BuyStardustSheet } from '@/components/shop/BuyStardustSheet'
 import { getShopItemsByCategory } from '@/domain/shopCatalog'
 import { getThemeDefinition } from '@/domain/themes'
 import { toast } from 'sonner'
@@ -23,6 +24,7 @@ export function ShopPage() {
   const navigate = useNavigate()
 
   const [purchaseItem, setPurchaseItem] = useState<ShopItem | null>(null)
+  const [showBuySheet, setShowBuySheet] = useState(false)
 
   if (authLoading || economyLoading) return <LoadingScreen />
 
@@ -140,6 +142,39 @@ export function ShopPage() {
             )
           })}
         </div>
+
+        {/* Buy Stardust CTA */}
+        <BlurFade delay={0.15 + themeItems.length * 0.06 + 0.1} duration={0.4}>
+          <button
+            onClick={() => setShowBuySheet(true)}
+            className="mt-6 flex w-full max-w-2xl mx-auto items-center gap-4 rounded-xl p-4 text-left transition-transform duration-200 hover:scale-[1.01]"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,165,0,0.04))',
+              border: '1px solid rgba(255,215,0,0.15)',
+            }}
+          >
+            <span
+              className="text-2xl shrink-0"
+              style={{ filter: 'drop-shadow(0 0 8px rgba(255,215,0,0.4))' }}
+            >
+              ✦
+            </span>
+            <div>
+              <p
+                className="text-sm font-medium tracking-wide"
+                style={{ color: '#FFD700' }}
+              >
+                Obtén más Polvo Estelar
+              </p>
+              <p
+                className="text-xs font-light tracking-wide"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                Desde $5.000 COP · Nequi, PSE, Tarjeta
+              </p>
+            </div>
+          </button>
+        </BlurFade>
       </main>
 
       {purchaseItem && (
@@ -150,8 +185,18 @@ export function ShopPage() {
           price={purchaseItem.price}
           currentBalance={economy.stardust}
           onConfirm={handlePurchase}
+          onBuyStardust={() => {
+            setPurchaseItem(null)
+            setShowBuySheet(true)
+          }}
         />
       )}
+
+      <BuyStardustSheet
+        open={showBuySheet}
+        onOpenChange={setShowBuySheet}
+        onPurchaseComplete={() => refetch()}
+      />
     </div>
   )
 }

@@ -102,6 +102,30 @@ export interface TransactionRecord {
   createdAt: IsoDateString
 }
 
+export type PaymentStatus = 'pending' | 'approved' | 'declined' | 'error' | 'voided'
+
+export interface PaymentRecord {
+  userId: string
+  packageId: string
+  amountInCents: number
+  currency: 'COP'
+  stardustAmount: number
+  wompiTransactionId: string | null
+  wompiReference: string
+  status: PaymentStatus
+  paymentMethod: string | null
+  createdAt: IsoDateString
+  resolvedAt: IsoDateString | null
+}
+
+export interface StardustPackage {
+  packageId: string
+  name: string
+  stardustAmount: number
+  priceInCents: number
+  bonusPercent: number
+}
+
 export const DEFAULT_SKY_PERSONALIZATION: SkyPersonalization = {
   density: 'medium',
   nebulaEnabled: true,
