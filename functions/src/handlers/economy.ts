@@ -28,6 +28,7 @@ function getYesterday(todayUTC: string): string {
 
 export async function getEconomy(req: Request, res: Response): Promise<void> {
   try {
+    res.set('Cache-Control', 'private, no-store')
     const decoded = await authenticateRequest(req)
     const userRef = db.collection('users').doc(decoded.uid)
     const now = new Date()

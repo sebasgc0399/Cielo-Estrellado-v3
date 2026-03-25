@@ -53,6 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribe = onIdTokenChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        setLoading(true)
         setUser(toAuthUser(firebaseUser))
         try {
           await api('/api/userSync', { method: 'POST' })
@@ -68,19 +69,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signInWithEmail = useCallback(async (email: string, password: string) => {
-    const credential = await signInWithEmailAndPassword(auth, email, password)
-    setUser(toAuthUser(credential.user))
+    await signInWithEmailAndPassword(auth, email, password)
   }, [])
 
   const signUpWithEmail = useCallback(async (email: string, password: string) => {
-    const credential = await createUserWithEmailAndPassword(auth, email, password)
-    setUser(toAuthUser(credential.user))
+    await createUserWithEmailAndPassword(auth, email, password)
   }, [])
 
   const signInWithGoogle = useCallback(async () => {
     const provider = new GoogleAuthProvider()
-    const credential = await signInWithPopup(auth, provider)
-    setUser(toAuthUser(credential.user))
+    await signInWithPopup(auth, provider)
   }, [])
 
   const signOut = useCallback(async () => {
