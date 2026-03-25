@@ -10,6 +10,7 @@ import {
   STREAK_30_BONUS,
   WEEKLY_BONUS,
 } from '../domain/economyRules.js'
+import { DEFAULT_USER_ECONOMY } from '../domain/defaults.js'
 
 function getISOWeek(date: Date): string {
   const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
@@ -54,11 +55,11 @@ export async function getEconomy(req: Request, res: Response): Promise<void> {
 
       const rawData = userSnap.data()!
 
-      const stardust = typeof rawData.stardust === 'number' ? rawData.stardust : 100
-      const loginStreak = typeof rawData.loginStreak === 'number' ? rawData.loginStreak : 0
-      const previousStreak = typeof rawData.previousStreak === 'number' ? rawData.previousStreak : 0
-      const lastDailyRewardDate = typeof rawData.lastDailyRewardDate === 'string' ? rawData.lastDailyRewardDate : null
-      const weeklyBonusWeek = typeof rawData.weeklyBonusWeek === 'string' ? rawData.weeklyBonusWeek : null
+      const stardust = typeof rawData.stardust === 'number' ? rawData.stardust : DEFAULT_USER_ECONOMY.stardust
+      const loginStreak = typeof rawData.loginStreak === 'number' ? rawData.loginStreak : DEFAULT_USER_ECONOMY.loginStreak
+      const previousStreak = typeof rawData.previousStreak === 'number' ? rawData.previousStreak : DEFAULT_USER_ECONOMY.previousStreak
+      const lastDailyRewardDate = typeof rawData.lastDailyRewardDate === 'string' ? rawData.lastDailyRewardDate : DEFAULT_USER_ECONOMY.lastDailyRewardDate
+      const weeklyBonusWeek = typeof rawData.weeklyBonusWeek === 'string' ? rawData.weeklyBonusWeek : DEFAULT_USER_ECONOMY.weeklyBonusWeek
 
       if (lastDailyRewardDate === todayUTC) {
         return {

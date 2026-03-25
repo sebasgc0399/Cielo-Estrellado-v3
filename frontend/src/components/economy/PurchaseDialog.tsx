@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
+import { ApiError } from '@/lib/api/client'
 import {
   DAILY_LOGIN_REWARD,
   STAR_CREATION_REWARD,
@@ -40,8 +41,16 @@ export function PurchaseDialog({
     setPurchasing(true)
     try {
       await onConfirm()
-    } catch {
-      toast.error('Error al realizar la compra')
+    } catch (error) {
+      if (error instanceof ApiError) {
+        if (error.status === 400) {
+          toast.error(error.message || 'Error al comprar')
+        } else {
+          toast.error('Error al realizar la compra')
+        }
+      } else {
+        toast.error('Error de conexión')
+      }
     } finally {
       setPurchasing(false)
     }

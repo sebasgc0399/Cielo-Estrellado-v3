@@ -73,8 +73,21 @@ beforeEach(() => {
 })
 
 describe('createSky', () => {
+  it('retorna 404 si usuario no existe', async () => {
+    mocks.userGet.mockResolvedValue({ exists: false, data: () => undefined })
+    const req = {
+      headers: { authorization: 'Bearer test-token' },
+      body: { title: 'New Sky' },
+      query: {},
+    } as unknown as Request
+    const res = makeRes()
+    await createSky(req, res)
+
+    expect(res.status).toHaveBeenCalledWith(404)
+  })
+
   it('rechaza crear cielo si maxSkies alcanzado', async () => {
-    mocks.userGet.mockResolvedValue({ data: () => ({ maxSkies: 2 }) })
+    mocks.userGet.mockResolvedValue({ exists: true, data: () => ({ maxSkies: 2 }) })
     mocks.collectionGroupGet.mockResolvedValue({ size: 2 })
 
     const req = {

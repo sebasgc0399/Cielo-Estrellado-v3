@@ -316,12 +316,16 @@ export class SkyEngine {
   }
 
   private resizeCanvas(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
-    canvas.width = Math.floor(this.width * this.dpr)
-    canvas.height = Math.floor(this.height * this.dpr)
+    const newW = Math.floor(this.width * this.dpr)
+    const newH = Math.floor(this.height * this.dpr)
+    if (canvas.width !== newW || canvas.height !== newH) {
+      canvas.width = newW
+      canvas.height = newH
+      ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
+      ctx.imageSmoothingEnabled = true
+    }
     canvas.style.width = `${this.width}px`
     canvas.style.height = `${this.height}px`
-    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
-    ctx.imageSmoothingEnabled = true
   }
 
   private buildLayerSettings(name: LayerName): LayerSettings {

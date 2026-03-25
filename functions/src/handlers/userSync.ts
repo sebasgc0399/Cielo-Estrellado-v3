@@ -43,10 +43,9 @@ export async function userSync(req: Request, res: Response): Promise<void> {
         lastLoginAt: now,
       })
 
-      let migrated = false
-
       await db.runTransaction(async (transaction) => {
         const freshSnap = await transaction.get(userRef)
+        if (!freshSnap.exists) return
         const freshData = freshSnap.data()!
 
         if (freshData.stardust === undefined) {
@@ -72,13 +71,9 @@ export async function userSync(req: Request, res: Response): Promise<void> {
             status: 'active',
             sessionVersion: 1,
           })
-          migrated = true
+          transaction.create(userRef.collection('transactions').doc(), welcomeTx)
         }
       })
-
-      if (migrated) {
-        await userRef.collection('transactions').add(welcomeTx)
-      }
     } else {
       const newUser: UserRecord = {
         displayName: firebaseUser.displayName || null,
@@ -103,8 +98,10 @@ export async function userSync(req: Request, res: Response): Promise<void> {
         lastInviteAcceptDate: null,
       }
 
-      await userRef.set(newUser)
-      await userRef.collection('transactions').add(welcomeTx)
+      const batch = db.batch()
+      batch.set(userRef, newUser)
+      batch.create(userRef.collection('transactions').doc(), welcomeTx)
+      await batch.commit()
     }
 
     res.status(200).json({ status: 'ok' })

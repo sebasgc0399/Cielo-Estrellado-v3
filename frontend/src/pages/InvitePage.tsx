@@ -62,7 +62,7 @@ export function InvitePage() {
   }, [token])
 
   const handleAccept = async () => {
-    if (!token || !preview?.valid) return
+    if (!user || !token || !preview?.valid) return
 
     setAccepting(true)
     try {
@@ -74,11 +74,19 @@ export function InvitePage() {
         showStardustToast(response.rewards.stardustEarned, 'invite_accepted')
       }
     } catch (err) {
-      if (err instanceof ApiError && err.status === 409) {
-        navigate(`/sky/${preview.skyId}`, { replace: true })
-        toast('Ya eres miembro de este cielo')
+      if (err instanceof ApiError) {
+        if (err.status === 409) {
+          navigate(`/sky/${preview.skyId}`, { replace: true })
+          toast('Ya eres miembro de este cielo')
+        } else if (err.status === 403) {
+          toast.error('Has alcanzado el límite de cielos como miembro')
+        } else if (err.status === 404 || err.status === 410) {
+          toast.error('Esta invitación ya no es válida')
+        } else {
+          toast.error('Error al aceptar la invitación')
+        }
       } else {
-        toast.error('Error al aceptar la invitación')
+        toast.error('Error de conexión')
       }
     } finally {
       setAccepting(false)

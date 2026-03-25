@@ -17,6 +17,7 @@ import {
   type User,
 } from 'firebase/auth'
 import { auth } from '@/lib/firebase/client'
+import { api } from '@/lib/api/client'
 
 export interface AuthUser {
   uid: string
@@ -50,8 +51,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const unsubscribe = onIdTokenChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser ? toAuthUser(firebaseUser) : null)
+    const unsubscribe = onIdTokenChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        setUser(toAuthUser(firebaseUser))
+        try {
+          await api('/api/userSync', { method: 'POST' })
+        } catch (e) {
+          console.error('userSync failed:', e)
+        }
+      } else {
+        setUser(null)
+      }
       setLoading(false)
     })
     return unsubscribe

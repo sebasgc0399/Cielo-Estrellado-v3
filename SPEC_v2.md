@@ -44,15 +44,72 @@
 
 ### 1.4 Compra con Dinero Real (Fase 3)
 
-| Paquete | Polvo Estelar | USD | Bonus |
-|---------|:------------:|:---:|:-----:|
-| Puñado de Polvo | 500 | $0.99 | — |
-| Bolsa de Polvo | 1,200 | $1.99 | +20% |
-| Frasco de Polvo | 3,000 | $4.99 | +20% |
-| Cofre Constelación | 8,000 | $9.99 | +60% |
-| Bóveda Galáctica | 20,000 | $19.99 | +100% |
+**Plataforma de pagos:** Wompi (Bancolombia, Colombia)
+**Razón:** Cobertura local (Nequi, PSE, tarjetas), persona natural con cédula, comisión competitiva (~2.5% + IVA), payout en 2-3 días.
 
-Requiere integración con Stripe o RevenueCat. No se implementa hasta Fase 3.
+**Paquetes de Polvo Estelar (precios en COP):**
+
+| Paquete | Polvo Estelar | COP | USD aprox | Bonus |
+|---------|:------------:|:----:|:---------:|:-----:|
+| Puñado de Polvo | 500 | $5,000 | ~$1.25 | — |
+| Bolsa de Polvo | 1,500 | $12,000 | ~$3.00 | +20% |
+| Frasco de Polvo | 3,500 | $25,000 | ~$6.25 | +40% |
+| Cofre Constelación | 8,000 | $50,000 | ~$12.50 | +60% |
+| Bóveda Galáctica | 20,000 | $99,000 | ~$24.75 | +100% |
+
+> **Nota sobre microtransacciones:** Los paquetes tienen un mínimo de $5,000 COP para que la comisión fija de Wompi no consuma un porcentaje excesivo del pago. El usuario compra PE y los gasta como quiera en la tienda.
+
+**Métodos de pago soportados:**
+- Nequi (prioritario — público joven colombiano)
+- PSE (transferencia bancaria directa)
+- Tarjeta crédito/débito (Visa, Mastercard)
+- Bancolombia a la mano
+
+**Flujo de compra:**
+
+1. Usuario selecciona paquete en la app (SPA)
+2. `POST /api/payments/create` → Cloud Function crea transacción en Wompi API
+3. Redirect a checkout de Wompi (o widget embebido)
+4. Usuario paga con Nequi/PSE/tarjeta
+5. Wompi envía webhook a `POST /api/payments/webhook`
+6. Cloud Function valida firma del webhook + estado de la transacción
+7. Si `APPROVED`: acredita PE en transacción Firestore atómica (balance + log)
+8. Si `DECLINED`/`ERROR`: no acredita, logea el evento
+9. Frontend detecta el cambio via refetch de economía
+
+**Modelo de datos (nuevas colecciones):**
+
+```typescript
+// payments/{paymentId} — registro de cada intento de pago
+interface PaymentRecord {
+  userId: string
+  packageId: string          // 'pack-500', 'pack-1500', etc.
+  amount: number             // COP
+  stardustAmount: number     // PE a acreditar
+  wompiTransactionId: string // ID de Wompi
+  status: 'pending' | 'approved' | 'declined' | 'error' | 'voided'
+  paymentMethod: string      // 'NEQUI', 'PSE', 'CARD', etc.
+  createdAt: IsoDateString
+  resolvedAt: IsoDateString | null
+}
+```
+
+**Seguridad:**
+
+- El webhook de Wompi se valida con la firma HMAC (`events_secret`)
+- El monto y paquete se validan server-side (no confiar en el cliente)
+- Los PE se acreditan SOLO en el webhook handler, nunca desde el cliente
+- Doble acreditación prevenida por estado del `PaymentRecord` (idempotente)
+
+**Configuración requerida:**
+
+- Cuenta Wompi (wompi.co) verificada con cédula
+- Variables de entorno en Cloud Functions:
+  - `WOMPI_PUBLIC_KEY` — llave pública para el widget/redirect
+  - `WOMPI_PRIVATE_KEY` — llave privada para crear transacciones
+  - `WOMPI_EVENTS_SECRET` — secreto para validar webhooks
+  - `WOMPI_INTEGRITY_SECRET` — secreto para firma de integridad
+- Webhook URL configurado en Wompi: `https://api-{project}.a.run.app/api/payments/webhook`
 
 ### 1.5 Anti-Exploit
 
@@ -525,7 +582,7 @@ Cuando el usuario intenta comprar algo sin PE suficiente:
   - "Crea estrellas: +5 PE c/u → ~46 estrellas"
   - "Racha de 7 días: +50 PE bonus"
 - CTA principal: "Seguir explorando" que cierre el diálogo
-- (Fase 3) CTA secundario de compra con dinero real
+- (Fase 3) CTA secundario: comprar PE con dinero real via Wompi
 
 ### 8.6 Modal de Bienvenida Diaria
 
@@ -638,11 +695,12 @@ Componentes de Magic UI utilizados para elevar la calidad visual de la experienc
 
 ### Fase 3: Dinero Real + Temas Avanzados
 
-1. Integrar proveedor de pagos (Stripe Checkout o RevenueCat)
-2. Endpoint `POST /api/shop/purchase-iap` con validación de recibo
-3. Temas de efectos especiales (meteor shower, fireflies, constellation lines) — extensión del engine
-4. Temas de forma de estrella (hearts, crystals, flowers) — refactor significativo del engine
-5. Temas de fondo/ambiente (imágenes de fondo detrás del canvas)
+| # | Tarea | Notas |
+|---|-------|-------|
+| 1 | Integrar Wompi (Bancolombia) | Requiere cuenta Wompi verificada |
+| 2 | `POST /api/payments/create` + webhook handler | Nuevo endpoint con validación HMAC |
+| 3 | Temas de efectos especiales (meteor shower, fireflies, constellation lines) | Extensión del engine — mini-RFC cada uno |
+| 4 | Temas de forma de estrella (hearts, crystals, flowers) | Refactor significativo del engine |
 
 ### Fase 4: Ideas Futuras
 

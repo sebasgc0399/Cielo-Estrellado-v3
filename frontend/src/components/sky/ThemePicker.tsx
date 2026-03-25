@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { getAllThemes } from '@/domain/themes'
 import { cn } from '@/lib/utils'
 import type { InventoryItem } from '@/domain/contracts'
@@ -12,8 +12,9 @@ interface ThemePickerProps {
 export function ThemePicker({ currentThemeId, onThemeChange, inventory }: ThemePickerProps) {
   const [applying, setApplying] = useState<string | null>(null)
 
-  const ownedThemeIds = new Set(
-    inventory.filter(i => i.category === 'theme').map(i => i.itemId),
+  const ownedThemeIds = useMemo(
+    () => new Set(inventory.filter(i => i.category === 'theme').map(i => i.itemId)),
+    [inventory],
   )
 
   const availableThemes = getAllThemes().filter(

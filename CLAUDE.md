@@ -62,6 +62,7 @@ Formato: que se cambia, por que, que alternativas se descartaron, que se rompe s
 - **Fase actual:** Economia (Fase 1) y temas (Fase 2) completados. 114 tests en verde. Siguiente: Fase 3 (pagos reales + temas avanzados).
 - **Reads directos desde cliente** via `onSnapshot`. Solo writes van por Cloud Functions.
 - **Sin SSR.** SPA pura desplegada en Firebase Hosting.
+- **Pagos:** Wompi (Bancolombia) para compra de Polvo Estelar con dinero real (COP). Nequi, PSE, tarjetas.
 
 ## Testing
 
@@ -101,6 +102,7 @@ firebase deploy                     # Todo junto
 - **Resolucion de temas es client-side.** `themeId → ThemeParams` es un lookup estatico en `themes.ts`. El engine recibe parametros, no IDs.
 - **Balance es campo en `UserRecord`**, no coleccion separada. Evita un read extra por auth check.
 - **Compras usan transacciones Firestore atomicas.** Debito + inventario + log en una sola transaccion.
+- **Pagos con dinero real via Wompi (Bancolombia).** El usuario compra paquetes de PE en COP. El flujo: Cloud Function crea transaccion → Wompi procesa → webhook confirma → acreditar PE. Nunca acreditar desde el cliente ni desde el endpoint de creacion — solo desde el webhook validado.
 
 ## Especificacion
 
