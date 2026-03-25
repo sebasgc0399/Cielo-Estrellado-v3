@@ -8,6 +8,7 @@ import { SHOP_CATALOG } from '../domain/shopCatalog.js'
 import type { DocumentReference, QueryDocumentSnapshot } from '@google-cloud/firestore'
 import type { SkyRecord, MemberRecord, MemberRole, SkyPersonalization, SkyDensity, InventoryItem } from '../domain/contracts.js'
 import { DEFAULT_SKY_PERSONALIZATION } from '../domain/contracts.js'
+import { DEFAULT_USER_ECONOMY } from '../domain/defaults.js'
 
 const VALID_DENSITIES: SkyDensity[] = ['low', 'medium', 'high']
 const PERSONALIZATION_KEYS = ['density', 'nebulaEnabled', 'twinkleEnabled', 'shootingStarsEnabled'] as const
@@ -83,8 +84,12 @@ export async function createSky(req: Request, res: Response): Promise<void> {
     }
 
     const userSnap = await db.collection('users').doc(decoded.uid).get()
+    if (!userSnap.exists) {
+      res.status(404).json({ error: 'Usuario no encontrado. Intenta cerrar sesión y volver a entrar.' })
+      return
+    }
     const userData = userSnap.data()
-    const maxSkies = typeof userData?.maxSkies === 'number' ? userData.maxSkies : 2
+    const maxSkies = typeof userData?.maxSkies === 'number' ? userData.maxSkies : DEFAULT_USER_ECONOMY.maxSkies
 
     const ownerSnap = await db.collectionGroup('members')
       .where('userId', '==', decoded.uid)

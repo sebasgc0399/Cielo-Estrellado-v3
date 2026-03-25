@@ -115,7 +115,7 @@ export function SkyCanvas({
   useEffect(() => {
     configRef.current = config ?? DEFAULT_CONFIG
     if (config) engineRef.current?.setConfig(config)
-  }, [config])
+  }, [config?.twinkle, config?.nebula, config?.shootingStars, config?.quality, config?.motion, config?.theme])
 
   // Sync userStars to engine
   useEffect(() => {

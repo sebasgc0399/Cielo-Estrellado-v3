@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
@@ -74,9 +74,18 @@ export function CollaboratorsSheet({ open, onOpenChange, skyId }: CollaboratorsS
   const [kickTarget, setKickTarget] = useState<MemberEntry | null>(null)
   const [kicking, setKicking] = useState(false)
   const [changingRoleId, setChangingRoleId] = useState<string | null>(null)
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      setCopied(false)
+      setRevokingId(null)
+      setKickTarget(null)
+      setKicking(false)
+      setChangingRoleId(null)
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
+      return
+    }
 
     setGeneratedUrl(null)
 
@@ -163,9 +172,10 @@ export function CollaboratorsSheet({ open, onOpenChange, skyId }: CollaboratorsS
   async function handleCopy() {
     if (!generatedUrl) return
     await navigator.clipboard.writeText(generatedUrl)
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
     setCopied(true)
     toast.success('Enlace copiado')
-    setTimeout(() => setCopied(false), 2000)
+    copyTimerRef.current = setTimeout(() => setCopied(false), 2000)
   }
 
   return (
@@ -186,6 +196,8 @@ export function CollaboratorsSheet({ open, onOpenChange, skyId }: CollaboratorsS
               <div className="flex justify-center py-3">
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white/70" />
               </div>
+            ) : members.length === 0 ? (
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No hay miembros</p>
             ) : (
               members.map((member) => (
                 <div key={member.userId} className="flex items-center gap-3">

@@ -14,7 +14,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { api } from '@/lib/api/client'
+import { api, ApiError } from '@/lib/api/client'
 import { showStardustToast } from '@/components/economy/StardustToast'
 import { uploadStarImage } from '@/lib/firebase/storage'
 import { STAR_TITLE_MAX_LENGTH, STAR_MESSAGE_MAX_LENGTH, STAR_IMAGE_MAX_SIZE_BYTES, STAR_IMAGE_ALLOWED_TYPES } from '@/domain/policies'
@@ -142,8 +142,18 @@ export function StarFormSheet({
         toast.success('Estrella actualizada')
       }
       onSuccess()
-    } catch {
-      toast.error(mode === 'create' ? 'Error al crear la estrella' : 'Error al guardar cambios')
+    } catch (error) {
+      if (error instanceof ApiError) {
+        if (error.status === 400) {
+          toast.error('Datos inválidos. Revisa el título y mensaje.')
+        } else if (error.status === 403) {
+          toast.error('No tienes permisos para esta acción')
+        } else {
+          toast.error(mode === 'create' ? 'Error al crear la estrella' : 'Error al guardar cambios')
+        }
+      } else {
+        toast.error('Error de conexión')
+      }
     } finally {
       setSubmitting(false)
     }

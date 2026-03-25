@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import type { ShopItem } from '@/domain/shopCatalog'
 import type { ThemeDefinition } from '@/domain/themes'
 
@@ -20,6 +21,26 @@ const STAR_POSITIONS = [
 export function ThemePreviewCard({ item, theme, owned, balance, onPurchase }: ThemePreviewCardProps) {
   const canAfford = balance >= item.price
 
+  const headerStyle = useMemo(() => ({
+    background: `linear-gradient(135deg, ${theme.colors.nebulaBaseStartColor}, ${theme.colors.nebulaBaseEndColor})`,
+  }), [theme.colors.nebulaBaseStartColor, theme.colors.nebulaBaseEndColor])
+
+  const starStyles = useMemo(() =>
+    STAR_POSITIONS.map(star => ({
+      width: `${star.size}px`,
+      height: `${star.size}px`,
+      top: star.top,
+      left: star.left,
+      background: theme.colors.userStarColor,
+      boxShadow: `0 0 ${star.size + 3}px ${theme.colors.glowColor}`,
+    })),
+    [theme.colors.userStarColor, theme.colors.glowColor],
+  )
+
+  const nebulaOverlayStyle = useMemo(() => ({
+    background: `radial-gradient(ellipse at 60% 40%, ${theme.colors.nebulaAccentColor}, transparent 70%)`,
+  }), [theme.colors.nebulaAccentColor])
+
   return (
     <div
       className="overflow-hidden rounded-xl transition-transform duration-200 hover:scale-[1.02]"
@@ -31,30 +52,19 @@ export function ThemePreviewCard({ item, theme, owned, balance, onPurchase }: Th
       {/* Theme preview */}
       <div
         className="relative h-32 overflow-hidden"
-        style={{
-          background: `linear-gradient(135deg, ${theme.colors.nebulaBaseStartColor}, ${theme.colors.nebulaBaseEndColor})`,
-        }}
+        style={headerStyle}
       >
-        {STAR_POSITIONS.map((star, i) => (
+        {starStyles.map((style, i) => (
           <div
             key={i}
             className="absolute rounded-full"
-            style={{
-              width: `${star.size}px`,
-              height: `${star.size}px`,
-              top: star.top,
-              left: star.left,
-              background: theme.colors.userStarColor,
-              boxShadow: `0 0 ${star.size + 3}px ${theme.colors.glowColor}`,
-            }}
+            style={style}
           />
         ))}
         {/* Nebula accent overlay */}
         <div
           className="absolute inset-0"
-          style={{
-            background: `radial-gradient(ellipse at 60% 40%, ${theme.colors.nebulaAccentColor}, transparent 70%)`,
-          }}
+          style={nebulaOverlayStyle}
         />
       </div>
 

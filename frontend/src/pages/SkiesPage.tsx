@@ -52,7 +52,7 @@ function formatDate(iso: string): string {
 
 export function SkiesPage() {
   const { user, loading: authLoading } = useRequireAuth()
-  const { economy, refetch } = useUserEconomy()
+  const { economy, error: economyError, refetch } = useUserEconomy()
   const navigate = useNavigate()
 
   const [showRewards, setShowRewards] = useState(true)
@@ -82,6 +82,8 @@ export function SkiesPage() {
     localStorage.setItem('cielo-estrellado:stardust-onboarding-dismissed', 'true')
   }, [])
 
+  const handleHistoryOpen = useCallback(() => setHistoryOpen(true), [])
+
   useEffect(() => {
     if (!user) return
     let cancelled = false
@@ -99,6 +101,12 @@ export function SkiesPage() {
 
     return () => { cancelled = true }
   }, [user])
+
+  useEffect(() => {
+    if (economyError) {
+      toast.error('No se pudieron cargar los datos de economía')
+    }
+  }, [economyError])
 
   if (authLoading || !user) return <LoadingScreen />
 
@@ -249,20 +257,26 @@ export function SkiesPage() {
           <div className="mt-3 flex items-center justify-between gap-2">
             <BlurFade delay={0.25} duration={0.4}>
               <div>
-                {economy && economy.loginStreak > 0 && (
-                  <StreakIndicator
-                    currentStreak={economy.loginStreak}
-                    previousStreak={economy.previousStreak}
-                  />
+                {economy ? (
+                  economy.loginStreak > 0 ? (
+                    <StreakIndicator
+                      currentStreak={economy.loginStreak}
+                      previousStreak={economy.previousStreak}
+                    />
+                  ) : null
+                ) : (
+                  <div className="h-5 w-32 animate-pulse rounded-full" style={{ background: 'rgba(255,255,255,0.04)' }} />
                 )}
               </div>
             </BlurFade>
 
             <div className="flex items-center gap-2">
-              {economy && (
+              {economy ? (
                 <BlurFade delay={0.28} duration={0.4}>
-                  <StardustBalance balance={economy.stardust} compact onClick={() => setHistoryOpen(true)} />
+                  <StardustBalance balance={economy.stardust} compact onClick={handleHistoryOpen} />
                 </BlurFade>
+              ) : (
+                <div className="h-7 w-16 animate-pulse rounded-full" style={{ background: 'rgba(255,255,255,0.04)' }} />
               )}
               <BlurFade delay={0.3} duration={0.4}>
                 <button

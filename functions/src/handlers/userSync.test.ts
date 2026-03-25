@@ -11,11 +11,10 @@ const FIREBASE_USER = {
 }
 
 const mocks = vi.hoisted(() => {
-  const transaction = { get: vi.fn(), update: vi.fn() }
+  const transaction = { get: vi.fn(), update: vi.fn(), create: vi.fn() }
   const userGet = vi.fn()
   const userSet = vi.fn().mockResolvedValue(undefined)
   const userUpdate = vi.fn().mockResolvedValue(undefined)
-  const txAdd = vi.fn().mockResolvedValue({ id: 'tx-id' })
   const collectionGroupGet = vi.fn().mockResolvedValue({ size: 0 })
 
   const membersQuery: Record<string, ReturnType<typeof vi.fn>> = {
@@ -24,12 +23,18 @@ const mocks = vi.hoisted(() => {
   }
   membersQuery.where.mockReturnValue(membersQuery)
 
+  const batchSet = vi.fn()
+  const batchCreate = vi.fn()
+  const batchCommit = vi.fn().mockResolvedValue(undefined)
+
+  const txDocRef = { id: 'tx-doc-ref' }
+
   const userRef = {
     get: userGet,
     set: userSet,
     update: userUpdate,
     collection: vi.fn((name: string) => {
-      if (name === 'transactions') return { add: txAdd }
+      if (name === 'transactions') return { doc: vi.fn().mockReturnValue(txDocRef) }
       return {}
     }),
   }
@@ -37,7 +42,7 @@ const mocks = vi.hoisted(() => {
   const runTransaction = vi.fn(async (fn: Function) => fn(transaction))
   const authGetUser = vi.fn()
 
-  return { transaction, userGet, userSet, userUpdate, txAdd, collectionGroupGet, membersQuery, userRef, runTransaction, authGetUser }
+  return { transaction, userGet, userSet, userUpdate, collectionGroupGet, membersQuery, batchSet, batchCreate, batchCommit, txDocRef, userRef, runTransaction, authGetUser }
 })
 
 vi.mock('../middleware/auth.js', () => ({
@@ -53,6 +58,7 @@ vi.mock('../lib/firebaseAdmin.js', () => ({
     }),
     collectionGroup: vi.fn().mockReturnValue(mocks.membersQuery),
     runTransaction: mocks.runTransaction,
+    batch: vi.fn().mockReturnValue({ set: mocks.batchSet, create: mocks.batchCreate, commit: mocks.batchCommit }),
   },
 }))
 
@@ -73,15 +79,16 @@ beforeEach(() => {
   vi.clearAllMocks()
   mocks.transaction.get.mockReset()
   mocks.transaction.update.mockReset()
+  mocks.transaction.create.mockReset()
   mocks.authGetUser.mockResolvedValue(FIREBASE_USER)
   mocks.userSet.mockResolvedValue(undefined)
   mocks.userUpdate.mockResolvedValue(undefined)
-  mocks.txAdd.mockResolvedValue({ id: 'tx-id' })
+  mocks.batchCommit.mockResolvedValue(undefined)
   mocks.collectionGroupGet.mockResolvedValue({ size: 0 })
   mocks.runTransaction.mockImplementation(async (fn: Function) => fn(mocks.transaction))
   mocks.membersQuery.where.mockReturnValue(mocks.membersQuery)
   mocks.userRef.collection.mockImplementation((name: string) => {
-    if (name === 'transactions') return { add: mocks.txAdd }
+    if (name === 'transactions') return { doc: vi.fn().mockReturnValue(mocks.txDocRef) }
     return {}
   })
 })
@@ -94,12 +101,15 @@ describe('userSync', () => {
     await userSync(makeReq(), res)
 
     expect(res.status).toHaveBeenCalledWith(200)
-    expect(mocks.userSet).toHaveBeenCalledWith(
+    expect(mocks.batchSet).toHaveBeenCalledWith(
+      mocks.userRef,
       expect.objectContaining({ stardust: 100, maxSkies: 2 }),
     )
-    expect(mocks.txAdd).toHaveBeenCalledWith(
+    expect(mocks.batchCreate).toHaveBeenCalledWith(
+      mocks.txDocRef,
       expect.objectContaining({ type: 'earn', amount: 100, reason: 'welcome' }),
     )
+    expect(mocks.batchCommit).toHaveBeenCalled()
   })
 
   it('migra usuario existente sin stardust', async () => {
@@ -108,6 +118,7 @@ describe('userSync', () => {
       data: () => ({ email: 'test@example.com', emailVerifiedAt: null }),
     })
     mocks.transaction.get.mockResolvedValue({
+      exists: true,
       data: () => ({ email: 'test@example.com' }), // no stardust
     })
     mocks.collectionGroupGet.mockResolvedValue({ size: 3 })
@@ -120,7 +131,8 @@ describe('userSync', () => {
       expect.anything(),
       expect.objectContaining({ stardust: 100, maxSkies: 3 }),
     )
-    expect(mocks.txAdd).toHaveBeenCalledWith(
+    expect(mocks.transaction.create).toHaveBeenCalledWith(
+      mocks.txDocRef,
       expect.objectContaining({ reason: 'welcome' }),
     )
   })
@@ -131,6 +143,7 @@ describe('userSync', () => {
       data: () => ({ email: 'test@example.com', emailVerifiedAt: '2025-01-01', stardust: 500 }),
     })
     mocks.transaction.get.mockResolvedValue({
+      exists: true,
       data: () => ({ stardust: 500 }),
     })
 
@@ -139,7 +152,7 @@ describe('userSync', () => {
 
     expect(res.status).toHaveBeenCalledWith(200)
     expect(mocks.transaction.update).not.toHaveBeenCalled()
-    expect(mocks.txAdd).not.toHaveBeenCalled()
+    expect(mocks.transaction.create).not.toHaveBeenCalled()
   })
 
   it('migracion es idempotente', async () => {
@@ -149,20 +162,22 @@ describe('userSync', () => {
       data: () => ({ email: 'test@example.com', emailVerifiedAt: null }),
     })
     mocks.transaction.get.mockResolvedValue({
+      exists: true,
       data: () => ({ email: 'test@example.com' }), // no stardust
     })
 
     const res1 = makeRes()
     await userSync(makeReq(), res1)
-    expect(mocks.txAdd).toHaveBeenCalledTimes(1)
+    expect(mocks.transaction.create).toHaveBeenCalledTimes(1)
 
     // Second call: already migrated
     vi.clearAllMocks()
     mocks.transaction.get.mockReset()
+    mocks.transaction.create.mockReset()
     mocks.runTransaction.mockImplementation(async (fn: Function) => fn(mocks.transaction))
     mocks.membersQuery.where.mockReturnValue(mocks.membersQuery)
     mocks.userRef.collection.mockImplementation((name: string) => {
-      if (name === 'transactions') return { add: mocks.txAdd }
+      if (name === 'transactions') return { doc: vi.fn().mockReturnValue(mocks.txDocRef) }
       return {}
     })
     mocks.authGetUser.mockResolvedValue(FIREBASE_USER)
@@ -173,11 +188,12 @@ describe('userSync', () => {
       data: () => ({ email: 'test@example.com', emailVerifiedAt: null, stardust: 100 }),
     })
     mocks.transaction.get.mockResolvedValue({
+      exists: true,
       data: () => ({ stardust: 100 }),
     })
 
     const res2 = makeRes()
     await userSync(makeReq(), res2)
-    expect(mocks.txAdd).not.toHaveBeenCalled()
+    expect(mocks.transaction.create).not.toHaveBeenCalled()
   })
 })

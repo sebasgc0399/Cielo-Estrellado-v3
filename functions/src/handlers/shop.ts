@@ -5,6 +5,7 @@ import { db } from '../lib/firebaseAdmin.js'
 import type { QueryDocumentSnapshot, Transaction } from '@google-cloud/firestore'
 import type { TransactionRecord, InventoryItem } from '../domain/contracts.js'
 import { getShopItem, SHOP_CATALOG } from '../domain/shopCatalog.js'
+import { DEFAULT_USER_ECONOMY } from '../domain/defaults.js'
 
 class ShopError extends Error {
   constructor(public code: string, message: string) {
@@ -40,7 +41,7 @@ export async function purchase(req: Request, res: Response): Promise<void> {
       }
 
       const rawData = userSnap.data()!
-      const stardust = typeof rawData.stardust === 'number' ? rawData.stardust : 0
+      const stardust = typeof rawData.stardust === 'number' ? rawData.stardust : DEFAULT_USER_ECONOMY.stardust
 
       if (stardust < item.price) {
         throw new ShopError('insufficient_balance', 'Balance insuficiente')
@@ -59,7 +60,7 @@ export async function purchase(req: Request, res: Response): Promise<void> {
 
       const updateData: Record<string, unknown> = { stardust: newBalance }
       if (item.category === 'sky-slot') {
-        const currentMaxSkies = typeof rawData.maxSkies === 'number' ? rawData.maxSkies : 3
+        const currentMaxSkies = typeof rawData.maxSkies === 'number' ? rawData.maxSkies : DEFAULT_USER_ECONOMY.maxSkies
         updateData.maxSkies = currentMaxSkies + 1
       }
       transaction.update(userRef, updateData)

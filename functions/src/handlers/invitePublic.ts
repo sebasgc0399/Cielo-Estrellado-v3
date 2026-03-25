@@ -7,6 +7,7 @@ import { findInviteIdByToken } from '../lib/findInviteIdByToken.js'
 import { acceptInvite, InviteError } from '../lib/acceptInvite.js'
 import type { InviteRecord, SkyRecord, TransactionRecord } from '../domain/contracts.js'
 import { INVITE_ACCEPTED_REWARD, MAX_INVITE_REWARDS_PER_DAY } from '../domain/economyRules.js'
+import { DEFAULT_USER_ECONOMY } from '../domain/defaults.js'
 
 export async function previewInvite(req: Request, res: Response): Promise<void> {
   try {
@@ -63,7 +64,7 @@ export async function acceptInviteHandler(req: Request, res: Response): Promise<
 
     const userSnap = await db.collection('users').doc(decoded.uid).get()
     const userData = userSnap.data()
-    const maxMemberships = typeof userData?.maxMemberships === 'number' ? userData.maxMemberships : 20
+    const maxMemberships = typeof userData?.maxMemberships === 'number' ? userData.maxMemberships : DEFAULT_USER_ECONOMY.maxMemberships
 
     const memberSnap = await db.collectionGroup('members')
       .where('userId', '==', decoded.uid)
@@ -87,9 +88,9 @@ export async function acceptInviteHandler(req: Request, res: Response): Promise<
         if (!freshData) return null
 
         const todayUTC = new Date().toISOString().slice(0, 10)
-        let acceptedInvitesToday = typeof freshData.acceptedInvitesToday === 'number' ? freshData.acceptedInvitesToday : 0
-        const lastInviteAcceptDate = typeof freshData.lastInviteAcceptDate === 'string' ? freshData.lastInviteAcceptDate : null
-        const currentStardust = typeof freshData.stardust === 'number' ? freshData.stardust : 0
+        let acceptedInvitesToday = typeof freshData.acceptedInvitesToday === 'number' ? freshData.acceptedInvitesToday : DEFAULT_USER_ECONOMY.acceptedInvitesToday
+        const lastInviteAcceptDate = typeof freshData.lastInviteAcceptDate === 'string' ? freshData.lastInviteAcceptDate : DEFAULT_USER_ECONOMY.lastInviteAcceptDate
+        const currentStardust = typeof freshData.stardust === 'number' ? freshData.stardust : DEFAULT_USER_ECONOMY.stardust
 
         if (lastInviteAcceptDate !== todayUTC) {
           acceptedInvitesToday = 0

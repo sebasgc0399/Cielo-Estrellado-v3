@@ -2,6 +2,7 @@ import { StrictMode, lazy, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router'
 import { AuthProvider, useAuth } from '@/lib/auth/AuthContext'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
 import { Toaster } from '@/components/ui/sonner'
 import '@/styles/globals.css'
@@ -21,20 +22,22 @@ function RootRedirect() {
 
 function App() {
   return (
-    <AuthProvider>
-      <Suspense fallback={<LoadingScreen />}>
-        <Routes>
-          <Route path="/" element={<RootRedirect />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/skies" element={<SkiesPage />} />
-          <Route path="/sky/:skyId" element={<SkyPage />} />
-          <Route path="/invite/:token" element={<InvitePage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/shop" element={<ShopPage />} />
-        </Routes>
-      </Suspense>
-      <Toaster />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <Suspense fallback={<LoadingScreen />}>
+          <Routes>
+            <Route path="/" element={<RootRedirect />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/skies" element={<SkiesPage />} />
+            <Route path="/sky/:skyId" element={<SkyPage />} />
+            <Route path="/invite/:token" element={<InvitePage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/shop" element={<ShopPage />} />
+          </Routes>
+        </Suspense>
+        <Toaster />
+      </AuthProvider>
+    </ErrorBoundary>
   )
 }
 

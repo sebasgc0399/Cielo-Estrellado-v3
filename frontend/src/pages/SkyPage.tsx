@@ -24,7 +24,7 @@ export function SkyPage() {
   const navigate = useNavigate()
 
   const { sky, role, loading: skyLoading, error } = useSkyData(skyId!)
-  const { stars, userStars, loading: starsLoading } = useSkyStars(skyId!)
+  const { stars, userStars, loading: starsLoading, error: starsError } = useSkyStars(skyId!)
 
   // UI state
   const [selectedStar, setSelectedStar] = useState<StarWithId | null>(null)
@@ -118,6 +118,32 @@ export function SkyPage() {
   if (authLoading || !user) return <LoadingScreen />
 
   if (skyLoading || starsLoading) return <LoadingScreen />
+
+  if (starsError) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center p-6"
+        style={{ background: 'var(--bg-void)' }}>
+        <span className="mb-4 text-3xl">✦</span>
+        <h2 className="mb-2 text-base font-medium" style={{ color: 'var(--text-primary)' }}>
+          No se pudieron cargar las estrellas
+        </h2>
+        <p className="mb-4 text-sm" style={{ color: 'var(--text-muted)' }}>
+          Verifica tu conexión e intenta de nuevo.
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="rounded-xl px-4 py-2 text-sm"
+          style={{
+            background: 'rgba(255,255,255,0.06)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            color: 'var(--text-primary)',
+          }}
+        >
+          Reintentar
+        </button>
+      </div>
+    )
+  }
 
   if (error || !sky || !role) {
     return (

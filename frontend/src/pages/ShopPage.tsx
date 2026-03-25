@@ -19,12 +19,38 @@ const themeItems = getShopItemsByCategory('theme')
 
 export function ShopPage() {
   const { loading: authLoading } = useRequireAuth()
-  const { economy, loading: economyLoading, refetch } = useUserEconomy()
+  const { economy, loading: economyLoading, error: economyError, refetch } = useUserEconomy()
   const navigate = useNavigate()
 
   const [purchaseItem, setPurchaseItem] = useState<ShopItem | null>(null)
 
-  if (authLoading || economyLoading || !economy) return <LoadingScreen />
+  if (authLoading || economyLoading) return <LoadingScreen />
+
+  if (economyError || !economy) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center p-6"
+        style={{ background: 'var(--bg-void)' }}>
+        <span className="mb-4 text-3xl">✦</span>
+        <h2 className="mb-2 text-base font-medium" style={{ color: 'var(--text-primary)' }}>
+          No se pudo cargar la tienda
+        </h2>
+        <p className="mb-4 text-sm" style={{ color: 'var(--text-muted)' }}>
+          Verifica tu conexión e intenta de nuevo.
+        </p>
+        <button
+          onClick={() => refetch()}
+          className="rounded-xl px-4 py-2 text-sm"
+          style={{
+            background: 'rgba(255,255,255,0.06)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            color: 'var(--text-primary)',
+          }}
+        >
+          Reintentar
+        </button>
+      </div>
+    )
+  }
 
   const isOwned = (itemId: string) =>
     economy.inventory.some(inv => inv.itemId === itemId)

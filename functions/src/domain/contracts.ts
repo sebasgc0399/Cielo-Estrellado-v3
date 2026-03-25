@@ -4,7 +4,7 @@ export type IsoDateString = string
 
 export type SkyPrivacy = 'private'
 export type MemberRole = 'owner' | 'editor' | 'viewer'
-export type MemberStatus = 'active' | 'revoked' | 'pending'
+export type MemberStatus = 'active' | 'revoked'
 export type UserStatus = 'active' | 'pending' | 'disabled'
 export type InviteRole = 'editor' | 'viewer'
 export type InviteStatus = 'pending' | 'accepted' | 'revoked' | 'expired'
@@ -53,13 +53,13 @@ export interface SkyRecord {
 }
 
 export interface StarRecord {
-  title: string | null
+  title: string
   message: string | null
   imagePath: string | null
   xNormalized: number | null
   yNormalized: number | null
   year: number | null
-  authorUserId: string | null
+  authorUserId: string
   updatedByUserId: string | null
   createdAt: IsoDateString
   updatedAt: IsoDateString

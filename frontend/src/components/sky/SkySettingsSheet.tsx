@@ -17,7 +17,7 @@ import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { Sparkles, Palette, Gauge, LogOut, Type } from 'lucide-react'
-import type { SkyRecord, SkyDensity, MemberRole } from '@/domain/contracts'
+import type { SkyRecord, SkyDensity, SkyPersonalization, MemberRole } from '@/domain/contracts'
 import { SKY_TITLE_MAX_LENGTH } from '@/domain/policies'
 import { getThemeById } from '@/domain/themes'
 import { useUserEconomy } from '@/hooks/useUserEconomy'
@@ -110,14 +110,18 @@ export function SkySettingsSheet({
   const navigate = useNavigate()
 
   const persistTimeout = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const pendingChanges = useRef<Partial<SkyPersonalization>>({})
 
-  const schedulePersist = useCallback((personalization: Partial<import('@/domain/contracts').SkyPersonalization>) => {
+  const schedulePersist = useCallback((changes: Partial<SkyPersonalization>) => {
+    pendingChanges.current = { ...pendingChanges.current, ...changes }
     if (persistTimeout.current) clearTimeout(persistTimeout.current)
     persistTimeout.current = setTimeout(async () => {
+      const accumulated = pendingChanges.current
+      pendingChanges.current = {}
       try {
         await api(`/api/skies/${skyId}`, {
           method: 'PATCH',
-          body: JSON.stringify({ personalization }),
+          body: JSON.stringify({ personalization: accumulated }),
         })
       } catch {
         toast.error('Error al guardar configuración')

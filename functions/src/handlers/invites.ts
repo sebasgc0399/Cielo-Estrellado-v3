@@ -38,6 +38,10 @@ export async function createInviteHandler(req: Request, res: Response): Promise<
     }
 
     const body = req.body as { role?: unknown } | undefined
+    if (body?.role !== undefined && body.role !== 'editor' && body.role !== 'viewer') {
+      res.status(400).json({ error: 'Rol debe ser "editor" o "viewer"' })
+      return
+    }
     const role: InviteRole = body?.role === 'viewer' ? 'viewer' : 'editor'
 
     const { token } = await createInvite(skyId, role, decoded.uid)

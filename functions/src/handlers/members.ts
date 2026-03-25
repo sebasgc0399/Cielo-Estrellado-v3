@@ -156,6 +156,9 @@ export async function updateMember(req: Request, res: Response): Promise<void> {
   }
 }
 
+// DECISIÓN DE DISEÑO: Las estrellas de un miembro revocado/que abandona permanecen
+// visibles en el cielo. Las estrellas son contenido del cielo, no del miembro.
+// Si se quiere cambiar este comportamiento, implementar soft-delete cascada.
 export async function leaveSky(req: Request, res: Response): Promise<void> {
   try {
     const decoded = await authenticateRequest(req)
