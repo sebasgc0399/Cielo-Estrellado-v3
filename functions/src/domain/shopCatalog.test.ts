@@ -1,8 +1,8 @@
 import { SHOP_CATALOG, getShopItem, getShopItemsByCategory } from './shopCatalog'
 
 describe('shopCatalog', () => {
-  it('has 8 items (7 themes + 1 sky-slot)', () => {
-    expect(SHOP_CATALOG).toHaveLength(8)
+  it('has 14 items (13 themes + 1 sky-slot)', () => {
+    expect(SHOP_CATALOG).toHaveLength(14)
   })
 
   it('getShopItem("sky-slot") returns item with price 500', () => {
@@ -21,8 +21,8 @@ describe('shopCatalog', () => {
     expect(getShopItem('no-existe')).toBeUndefined()
   })
 
-  it('getShopItemsByCategory("theme") returns 7 items', () => {
-    expect(getShopItemsByCategory('theme')).toHaveLength(7)
+  it('getShopItemsByCategory("theme") returns 13 items', () => {
+    expect(getShopItemsByCategory('theme')).toHaveLength(13)
   })
 
   it('getShopItemsByCategory("sky-slot") returns 1 item', () => {
@@ -45,10 +45,10 @@ describe('shopCatalog', () => {
     }
   })
 
-  it('theme prices are 600 or 800 per SPEC_v2', () => {
+  it('theme prices are 600, 800, 1200, or 1500', () => {
     const themes = getShopItemsByCategory('theme')
     for (const theme of themes) {
-      expect([600, 800]).toContain(theme.price)
+      expect([600, 800, 1200, 1500]).toContain(theme.price)
     }
   })
 })

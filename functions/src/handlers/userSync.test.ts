@@ -103,11 +103,11 @@ describe('userSync', () => {
     expect(res.status).toHaveBeenCalledWith(200)
     expect(mocks.batchSet).toHaveBeenCalledWith(
       mocks.userRef,
-      expect.objectContaining({ stardust: 100, maxSkies: 2 }),
+      expect.objectContaining({ stardust: 150, maxSkies: 2 }),
     )
     expect(mocks.batchCreate).toHaveBeenCalledWith(
       mocks.txDocRef,
-      expect.objectContaining({ type: 'earn', amount: 100, reason: 'welcome' }),
+      expect.objectContaining({ type: 'earn', amount: 150, reason: 'welcome' }),
     )
     expect(mocks.batchCommit).toHaveBeenCalled()
   })
@@ -129,7 +129,7 @@ describe('userSync', () => {
     expect(res.status).toHaveBeenCalledWith(200)
     expect(mocks.transaction.update).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ stardust: 100, maxSkies: 3 }),
+      expect.objectContaining({ stardust: 150, maxSkies: 3 }),
     )
     expect(mocks.transaction.create).toHaveBeenCalledWith(
       mocks.txDocRef,
@@ -185,11 +185,11 @@ describe('userSync', () => {
 
     mocks.userGet.mockResolvedValue({
       exists: true,
-      data: () => ({ email: 'test@example.com', emailVerifiedAt: null, stardust: 100 }),
+      data: () => ({ email: 'test@example.com', emailVerifiedAt: null, stardust: 150 }),
     })
     mocks.transaction.get.mockResolvedValue({
       exists: true,
-      data: () => ({ stardust: 100 }),
+      data: () => ({ stardust: 150 }),
     })
 
     const res2 = makeRes()
