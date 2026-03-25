@@ -17,8 +17,8 @@ const EXPECTED_THEME_COLOR_KEYS = [
 ]
 
 describe('themes', () => {
-  it('getAllThemes() returns 8 themes', () => {
-    expect(getAllThemes()).toHaveLength(8)
+  it('getAllThemes() returns 14 themes', () => {
+    expect(getAllThemes()).toHaveLength(14)
   })
 
   it('getThemeById(null) returns null', () => {
@@ -65,6 +65,12 @@ describe('themes', () => {
       'ocean-depths',
       'golden-night',
       'frost-crystal',
+      'meteor-shower',
+      'fireflies',
+      'constellations',
+      'enchanted-garden',
+      'diamond-crystal',
+      'celestial-hearts',
     ]
     expect(themeIds.sort()).toEqual(shopThemeIds.sort())
   })

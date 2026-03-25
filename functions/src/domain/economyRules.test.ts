@@ -33,8 +33,8 @@ describe('economyRules', () => {
     },
   )
 
-  it('WELCOME_BONUS equals 100', () => {
-    expect(WELCOME_BONUS).toBe(100)
+  it('WELCOME_BONUS equals 150', () => {
+    expect(WELCOME_BONUS).toBe(150)
   })
 
   it('MAX_STARS_REWARD_PER_DAY equals 10', () => {

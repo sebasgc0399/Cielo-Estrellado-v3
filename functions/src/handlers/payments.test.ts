@@ -221,7 +221,7 @@ describe('createPayment', () => {
         packageId: 'pack-1500',
         amountInCents: 1200000,
         currency: 'COP',
-        stardustAmount: 1500,
+        stardustAmount: 1375,
         wompiTransactionId: null,
         status: 'pending',
         paymentMethod: null,

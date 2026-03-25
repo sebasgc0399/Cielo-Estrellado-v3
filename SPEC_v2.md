@@ -12,20 +12,20 @@
 - **Icono:** ✦ + número (ej: ✦ 350)
 - **Alcance:** Por usuario (no por cielo)
 - **Modelo:** Híbrido — se gana gratis jugando o se compra con dinero real
-- **Bienvenida:** 100 PE al crear cuenta
+- **Bienvenida:** 150 PE al crear cuenta
 
 ### 1.2 Mecánicas de Ganancia
 
 | Acción | Recompensa | Cooldown / Cap | Anti-exploit |
 |--------|:----------:|---------------|-------------|
-| Login diario | 10 PE | 1× por día calendario UTC | Campo `lastDailyRewardDate` idempotente |
+| Login diario | 15 PE | 1× por día calendario UTC | Campo `lastDailyRewardDate` idempotente |
 | Crear una estrella | 5 PE | Máx 10 estrellas/día = 50 PE/día | Contador `createdStarsToday` reseteado por fecha |
 | Primera estrella en cielo nuevo | 25 PE bonus | 1× por cielo (lifetime) | Query estrellas del usuario en ese cielo (excl. soft-deleted). Si count === 0, bonus. |
 | Racha de 7 días consecutivos | 50 PE bonus | Se resetea al romper racha | Requiere login real cada día |
-| Racha de 30 días consecutivos | 200 PE bonus | Se resetea al romper racha | No retroactivo — días perdidos no acumulan |
+| Racha de 30 días consecutivos | 350 PE bonus | Se resetea al romper racha | No retroactivo — días perdidos no acumulan |
 | Invitación aceptada | 30 PE | Máx 5 aceptadas/día | No acepta propias (ya enforced), cap diario via `acceptedInvitesToday` + `lastInviteAcceptDate` |
 | Bonus semanal (login ≥1×/semana) | 20 PE | 1× por semana ISO UTC | Campo `weeklyBonusWeek` |
-| Creación de cuenta | 100 PE | Lifetime (una vez) | Se otorga en `userSync` |
+| Creación de cuenta | 150 PE | Lifetime (una vez) | Se otorga en `userSync` |
 
 > **Nota:** El daily reward, weekly bonus y actualización de streak se procesan atómicamente en la primera llamada a `GET /api/user/economy` de cada día UTC. No existe endpoint separado para reclamarlos — el procesamiento es automático e idempotente.
 
@@ -33,14 +33,14 @@
 
 | Tipo de Usuario | Patrón Diario | PE/Mes Estimado |
 |----------------|--------------|:---------------:|
-| Casual (3×/semana, 1 estrella) | 10 login + 5 estrella = 15/sesión, 3×/sem | ~330 |
-| Regular (diario, 2-3 estrellas) | 10 + 15 = 25/día | ~950 |
-| Activo (diario, 5+ estrellas, invitaciones) | 10 + 25 + 15 = 50/día | ~2,200 |
+| Casual (3×/semana, 1 estrella) | 15 login + 5 estrella = 20/sesión, 3×/sem + weekly | ~320 |
+| Regular (diario, 3 estrellas) | 15 + 15 = 30/día + rachas + weekly | ~1,530 |
+| Activo (diario, 5+ estrellas, invitaciones) | 15 + 25 + rachas + invites + weekly | ~2,580 |
 
 **Tiempo al primer tema (800 PE):**
-- Casual: ~2.5 meses
-- Regular: ~25 días
-- Activo: ~12 días
+- Casual: ~7 semanas
+- Regular: ~13 días
+- Activo: ~8 días
 
 ### 1.4 Compra con Dinero Real (Fase 3)
 
@@ -52,10 +52,10 @@
 | Paquete | Polvo Estelar | COP | USD aprox | Bonus |
 |---------|:------------:|:----:|:---------:|:-----:|
 | Puñado de Polvo | 500 | $5,000 | ~$1.25 | — |
-| Bolsa de Polvo | 1,500 | $12,000 | ~$3.00 | +20% |
-| Frasco de Polvo | 3,500 | $25,000 | ~$6.25 | +40% |
-| Cofre Constelación | 8,000 | $50,000 | ~$12.50 | +60% |
-| Bóveda Galáctica | 20,000 | $99,000 | ~$24.75 | +100% |
+| Bolsa de Polvo | 1,375 | $12,000 | ~$3.00 | +10% |
+| Frasco de Polvo | 3,000 | $25,000 | ~$6.25 | +20% |
+| Cofre Constelación | 7,000 | $50,000 | ~$12.50 | +40% |
+| Bóveda Galáctica | 18,000 | $99,000 | ~$24.75 | +80% |
 
 > **Nota sobre microtransacciones:** Los paquetes tienen un mínimo de $5,000 COP para que la comisión fija de Wompi no consuma un porcentaje excesivo del pago. El usuario compra PE y los gasta como quiera en la tienda.
 

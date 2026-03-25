@@ -115,13 +115,13 @@ describe('getEconomy', () => {
 
     expect(mocks.transaction.update).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ stardust: 130, loginStreak: 1 }),
+      expect.objectContaining({ stardust: 135, loginStreak: 1 }),
     )
     expect(res.status).toHaveBeenCalledWith(200)
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        stardust: 130,
-        rewards: expect.objectContaining({ daily: 10, weekly: 20, streak: 0, streakDays: 1 }),
+        stardust: 135,
+        rewards: expect.objectContaining({ daily: 15, weekly: 20, streak: 0, streakDays: 1 }),
       }),
     )
   })
@@ -199,7 +199,7 @@ describe('getEconomy', () => {
 
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        rewards: expect.objectContaining({ streak: 200, streakDays: 30 }),
+        rewards: expect.objectContaining({ streak: 350, streakDays: 30 }),
       }),
     )
   })
@@ -305,8 +305,8 @@ describe('getEconomy', () => {
 
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        stardust: 130,
-        rewards: expect.objectContaining({ daily: 10, weekly: 20 }),
+        stardust: 135,
+        rewards: expect.objectContaining({ daily: 15, weekly: 20 }),
       }),
     )
   })
@@ -327,7 +327,7 @@ describe('getTransactions', () => {
   it('retorna transacciones paginadas', async () => {
     mocks.queryGet.mockResolvedValue({
       docs: [
-        { id: 'tx-1', data: () => ({ type: 'earn', amount: 10, reason: 'daily_login', itemId: null, balanceAfter: 110, createdAt: '2026-01-15T12:00:00Z' }) },
+        { id: 'tx-1', data: () => ({ type: 'earn', amount: 15, reason: 'daily_login', itemId: null, balanceAfter: 115, createdAt: '2026-01-15T12:00:00Z' }) },
         { id: 'tx-2', data: () => ({ type: 'earn', amount: 20, reason: 'weekly_bonus', itemId: null, balanceAfter: 130, createdAt: '2026-01-15T12:00:01Z' }) },
         { id: 'tx-3', data: () => ({ type: 'spend', amount: 800, reason: 'shop_purchase', itemId: 'theme-aurora', balanceAfter: 330, createdAt: '2026-01-15T12:00:02Z' }) },
       ],
@@ -345,7 +345,7 @@ describe('getTransactions', () => {
   it('respeta limit y retorna nextCursor', async () => {
     mocks.queryGet.mockResolvedValue({
       docs: [
-        { id: 'tx-1', data: () => ({ type: 'earn', amount: 10, reason: 'daily_login', itemId: null, balanceAfter: 110, createdAt: '2026-01-15T12:00:00Z' }) },
+        { id: 'tx-1', data: () => ({ type: 'earn', amount: 15, reason: 'daily_login', itemId: null, balanceAfter: 115, createdAt: '2026-01-15T12:00:00Z' }) },
         { id: 'tx-2', data: () => ({ type: 'earn', amount: 20, reason: 'weekly_bonus', itemId: null, balanceAfter: 130, createdAt: '2026-01-15T12:00:01Z' }) },
       ],
     })
