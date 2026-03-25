@@ -1,6 +1,6 @@
 import { NumberTicker } from '@/components/ui/number-ticker'
 import { Button } from '@/components/ui/button'
-import { BorderBeam } from '@/components/ui/border-beam'
+
 import { formatCOP } from '@/lib/formatCOP'
 import type { StardustPackage } from '@/domain/contracts'
 
@@ -58,7 +58,7 @@ const TIER_CONFIG: Record<PackageTier, {
     iconSize: 'text-2xl',
     badge: 'Popular',
     highlight: null,
-    borderColor: 'rgba(255, 215, 0, 0.18)',
+    borderColor: 'rgba(255, 215, 0, 0.25)',
     bgTint: 'rgba(255, 215, 0, 0.03)',
     shadow: '0 0 12px rgba(255, 215, 0, 0.08)',
     iconFilter: 'drop-shadow(0 0 10px rgba(255, 215, 0, 0.4))',
@@ -68,16 +68,15 @@ const TIER_CONFIG: Record<PackageTier, {
     iconSize: 'text-3xl',
     badge: 'Mejor valor',
     highlight: null,
-    borderColor: 'rgba(255, 215, 0, 0.25)',
+    borderColor: 'rgba(255, 215, 0, 0.35)',
     bgTint: 'linear-gradient(135deg, rgba(255, 215, 0, 0.04), rgba(255, 165, 0, 0.02))',
-    shadow: '0 0 20px rgba(255, 215, 0, 0.12), 0 4px 16px rgba(0, 0, 0, 0.3)',
+    shadow: '0 0 20px rgba(255, 215, 0, 0.12), 0 0 15px rgba(255, 215, 0, 0.08), 0 4px 16px rgba(0, 0, 0, 0.3)',
     iconFilter: 'drop-shadow(0 0 14px rgba(255, 215, 0, 0.5))',
   },
 }
 
 export function PackageCard({ pkg, tier, purchasing, onBuy }: PackageCardProps) {
   const config = TIER_CONFIG[tier]
-  const isPremiumTier = tier === 'premium' || tier === 'legendary'
   const isLegendary = tier === 'legendary'
 
   return (
@@ -112,33 +111,6 @@ export function PackageCard({ pkg, tier, purchasing, onBuy }: PackageCardProps) 
           boxShadow: config.shadow,
         }}
       >
-        {/* BorderBeam for premium tiers */}
-        {tier === 'premium' && (
-          <BorderBeam
-            colorFrom="#FFD700"
-            colorTo="#FFA500"
-            duration={6}
-            size={150}
-          />
-        )}
-        {isLegendary && (
-          <>
-            <BorderBeam
-              colorFrom="#FFD700"
-              colorTo="#FFA500"
-              duration={5}
-              size={180}
-            />
-            <BorderBeam
-              colorFrom="#FFA500"
-              colorTo="#FF8C00"
-              duration={5}
-              size={180}
-              delay={2.5}
-            />
-          </>
-        )}
-
         {/* Row layout */}
         <div className="flex items-center gap-3">
           {/* Icon */}
