@@ -183,7 +183,7 @@ videoProcessedToday: number       // contador de videos procesados hoy
 lastVideoProcessDate: string      // fecha UTC del ultimo procesamiento
 ```
 
-Sigue el mismo patron que `createdStarsToday` / `lastStarCreationDate`. La Cloud Function verifica y actualiza antes de procesar. Max **5 videos por usuario por hora**.
+Sigue el mismo patron que `createdStarsToday` / `lastStarCreationDate`. La Cloud Function verifica y actualiza antes de procesar. Max **5 videos por usuario por dia**.
 
 ---
 
@@ -311,7 +311,7 @@ Si falla en **cualquier paso** despues de la validacion inicial:
 ### 6.4 Seguridad
 
 - Validar que `userId` en customMetadata coincide con `authorUserId` de la estrella en Firestore.
-- Rate limit: maximo 5 procesamientos de video por usuario por hora (via `videoProcessedToday` en UserRecord).
+- Rate limit: maximo 5 procesamientos de video por usuario por dia (via `videoProcessedToday` en UserRecord).
 - Si el archivo raw excede 50MB, rechazar y borrar.
 - Si `mediaStatus != 'processing'` al momento de procesar, abortar (previene procesamiento de uploads huerfanos).
 
