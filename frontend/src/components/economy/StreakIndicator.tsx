@@ -1,13 +1,16 @@
+import { cn } from '@/lib/utils'
+
 interface StreakIndicatorProps {
   currentStreak: number
   previousStreak: number
+  className?: string
 }
 
-export function StreakIndicator({ currentStreak, previousStreak }: StreakIndicatorProps) {
+export function StreakIndicator({ currentStreak, previousStreak, className }: StreakIndicatorProps) {
   const completedDots = currentStreak === 0 ? 0 : currentStreak >= 7 ? 7 : currentStreak % 7 || 7
 
   return (
-    <div className="flex items-center gap-2">
+    <div className={cn("flex items-center gap-2", className)}>
       {/* 7-day circles */}
       <div className="flex gap-1">
         {Array.from({ length: 7 }, (_, i) => {

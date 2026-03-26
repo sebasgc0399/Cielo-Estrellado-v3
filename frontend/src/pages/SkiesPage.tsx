@@ -21,7 +21,9 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { Plus, Sparkles, Pencil, Trash2, Store } from 'lucide-react'
+import { motion } from 'motion/react'
+import { Plus, Pencil, Trash2, Store } from 'lucide-react'
+import { ShimmerButton } from '@/components/ui/shimmer-button'
 import { getInitials } from '@/lib/getInitials'
 import { StardustBalance } from '@/components/economy/StardustBalance'
 import { StreakIndicator } from '@/components/economy/StreakIndicator'
@@ -317,21 +319,82 @@ export function SkiesPage() {
           ) : skies.length === 0 ? (
             /* Empty state */
             <BlurFade delay={0.3} duration={0.6}>
-              <div className="flex flex-col items-center justify-center pt-20 text-center">
-                <div
-                  className="mb-6 flex h-20 w-20 items-center justify-center rounded-full"
-                  style={{
-                    background: 'rgba(140, 180, 255, 0.08)',
-                    border: '1px solid rgba(140, 180, 255, 0.12)',
-                  }}
-                >
-                  <Sparkles
-                    className="h-8 w-8"
-                    style={{ color: 'var(--accent-color)' }}
+              <div className="flex flex-col items-center justify-center pt-16 text-center">
+                {/* Celestial illustration */}
+                <div className="relative mb-8 h-28 w-28">
+                  {/* Glow halo */}
+                  <div
+                    className="absolute inset-0 rounded-full"
+                    style={{
+                      background: 'radial-gradient(circle, rgba(140, 180, 255, 0.1) 0%, transparent 70%)',
+                    }}
                   />
+                  {/* Moon + stars SVG */}
+                  <motion.svg
+                    viewBox="0 0 112 112"
+                    fill="none"
+                    className="relative h-full w-full"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.8, ease: 'easeOut' }}
+                  >
+                    {/* Crescent moon */}
+                    <motion.path
+                      d="M56 28C56 44.5685 44.5685 56 28 56C44.5685 56 56 67.4315 56 84C56 67.4315 67.4315 56 84 56C67.4315 56 56 44.5685 56 28Z"
+                      fill="url(#moonGrad)"
+                      filter="drop-shadow(0 0 12px rgba(140, 180, 255, 0.3))"
+                      animate={{ scale: [1, 1.04, 1] }}
+                      transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                    />
+                    {/* Small stars */}
+                    <motion.circle
+                      cx="26" cy="30" r="1.5"
+                      fill="rgba(255, 255, 255, 0.6)"
+                      animate={{ opacity: [0.3, 0.8, 0.3] }}
+                      transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                    />
+                    <motion.circle
+                      cx="82" cy="26" r="1"
+                      fill="rgba(255, 255, 255, 0.5)"
+                      animate={{ opacity: [0.5, 1, 0.5] }}
+                      transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
+                    />
+                    <motion.circle
+                      cx="90" cy="42" r="1.2"
+                      fill="rgba(255, 255, 255, 0.4)"
+                      animate={{ opacity: [0.2, 0.7, 0.2] }}
+                      transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+                    />
+                    <motion.circle
+                      cx="20" cy="70" r="0.8"
+                      fill="rgba(255, 255, 255, 0.5)"
+                      animate={{ opacity: [0.4, 0.9, 0.4] }}
+                      transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut', delay: 0.8 }}
+                    />
+                    <motion.circle
+                      cx="88" cy="78" r="1.3"
+                      fill="rgba(255, 255, 255, 0.45)"
+                      animate={{ opacity: [0.3, 0.8, 0.3] }}
+                      transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut', delay: 1.5 }}
+                    />
+                    {/* Tiny accent star — 4-pointed */}
+                    <motion.path
+                      d="M36 82L37 79L38 82L41 83L38 84L37 87L36 84L33 83L36 82Z"
+                      fill="rgba(255, 215, 0, 0.6)"
+                      animate={{ opacity: [0.4, 1, 0.4], scale: [1, 1.2, 1] }}
+                      transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0.3 }}
+                    />
+                    <defs>
+                      <linearGradient id="moonGrad" x1="28" y1="28" x2="84" y2="84">
+                        <stop offset="0%" stopColor="rgb(140, 180, 255)" />
+                        <stop offset="100%" stopColor="rgba(140, 180, 255, 0.6)" />
+                      </linearGradient>
+                    </defs>
+                  </motion.svg>
                 </div>
+
                 <h2
-                  className="mb-2 text-lg font-light tracking-wide"
+                  className="mb-2 text-xl font-light tracking-wide"
                   style={{
                     color: 'var(--text-primary)',
                     fontFamily: "'Georgia', 'Palatino Linotype', 'Book Antiqua', Palatino, serif",
@@ -345,14 +408,15 @@ export function SkiesPage() {
                 >
                   Crea un cielo para guardar tus estrellas y compartirlas con quienes más quieres.
                 </p>
-                <Button
-                  size="lg"
-                  className="gap-2 tracking-wide"
+                <ShimmerButton
+                  shimmerColor="rgba(140, 180, 255, 0.5)"
+                  background="rgba(140, 180, 255, 0.1)"
+                  className="gap-2 text-sm font-light tracking-wide"
                   onClick={() => setSheetOpen(true)}
                 >
                   <Plus className="h-4 w-4" />
                   Crear mi primer cielo
-                </Button>
+                </ShimmerButton>
               </div>
             </BlurFade>
           ) : (

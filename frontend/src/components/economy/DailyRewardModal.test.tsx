@@ -2,8 +2,9 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { DailyRewardModal } from './DailyRewardModal'
 
 vi.mock('motion/react', () => {
-  const P = ({ children }: any) => <>{children}</>
-  return { motion: { div: P }, AnimatePresence: P }
+  const P = ({ children, ...props }: any) => <div {...props}>{children}</div>
+  const Svg = (props: any) => <svg {...props} />
+  return { motion: { div: P, svg: Svg }, AnimatePresence: ({ children }: any) => <>{children}</> }
 })
 
 vi.mock('@/components/ui/blur-fade', () => ({
@@ -18,6 +19,16 @@ vi.mock('@/components/ui/shimmer-button', () => ({
   ShimmerButton: ({ children, onClick, className }: any) => (
     <button onClick={onClick} className={className}>{children}</button>
   ),
+}))
+
+vi.mock('@/components/ui/border-beam', () => ({
+  BorderBeam: () => null,
+}))
+
+vi.mock('canvas-confetti', () => ({ default: vi.fn() }))
+
+vi.mock('@/components/economy/StreakIndicator', () => ({
+  StreakIndicator: ({ currentStreak }: any) => <span>{currentStreak}d</span>,
 }))
 
 describe('DailyRewardModal', () => {
