@@ -250,9 +250,9 @@ const THEMES: Record<string, ThemeDefinition> = {
     },
     effects: {
       constellationLines: {
-        maxDistance: 0.12,
-        color: 'rgba(180, 210, 255, 0.6)',
-        opacity: 0.2,
+        maxDistance: 0.18,
+        color: 'rgb(180, 210, 255)',
+        opacity: 0.35,
       },
     },
   },

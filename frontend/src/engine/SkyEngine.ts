@@ -826,7 +826,7 @@ export class SkyEngine {
       this.fxCtx.save()
       this.fxCtx.globalCompositeOperation = 'lighter'
       this.fxCtx.strokeStyle = cl.color
-      this.fxCtx.lineWidth = 0.5
+      this.fxCtx.lineWidth = 1
 
       for (let i = 0; i < nearStars.length; i += 1) {
         const starA = nearStars[i]
