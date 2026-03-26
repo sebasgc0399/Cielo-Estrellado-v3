@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useState, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router'
 import { useRequireAuth } from '@/lib/auth/useRequireAuth'
 import { useUserEconomy } from '@/hooks/useUserEconomy'
 import { api, ApiError } from '@/lib/api/client'
@@ -13,18 +13,82 @@ import { BuyStardustSheet } from '@/components/shop/BuyStardustSheet'
 import { getShopItemsByCategory } from '@/domain/shopCatalog'
 import { getThemeDefinition } from '@/domain/themes'
 import { toast } from 'sonner'
+import confetti from 'canvas-confetti'
 import { ArrowLeft } from 'lucide-react'
+import { showStardustToast } from '@/components/economy/StardustToast'
 import type { ShopItem } from '@/domain/shopCatalog'
+import type { PaymentStatus } from '@/domain/contracts'
+
+interface PaymentStatusResponse {
+  status: PaymentStatus
+  stardustAmount: number
+}
 
 const themeItems = getShopItemsByCategory('theme')
+
+function fireStarConfetti() {
+  const defaults = {
+    spread: 360, ticks: 50, gravity: 0, decay: 0.94, startVelocity: 30,
+    colors: ['#FFE400', '#FFBD00', '#E89400', '#FFD700', '#FFA500'],
+  }
+  const shoot = () => {
+    confetti({ ...defaults, particleCount: 40, scalar: 1.2, shapes: ['star'] })
+    confetti({ ...defaults, particleCount: 10, scalar: 0.75, shapes: ['circle'] })
+  }
+  setTimeout(shoot, 0)
+  setTimeout(shoot, 150)
+}
 
 export function ShopPage() {
   const { loading: authLoading } = useRequireAuth()
   const { economy, loading: economyLoading, error: economyError, refetch } = useUserEconomy()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const [purchaseItem, setPurchaseItem] = useState<ShopItem | null>(null)
   const [showBuySheet, setShowBuySheet] = useState(false)
+
+  useEffect(() => {
+    const paymentRef = searchParams.get('payment')
+    if (!paymentRef) return
+
+    setSearchParams({}, { replace: true })
+    toast.info('Verificando tu pago...')
+
+    let cancelled = false
+
+    const poll = async () => {
+      for (let i = 0; i < 30; i++) {
+        if (cancelled) return
+        await new Promise(r => setTimeout(r, 2000))
+        if (cancelled) return
+        try {
+          const result = await api<PaymentStatusResponse>(
+            `/api/payments/${paymentRef}/status`,
+          )
+          if (result.status === 'approved') {
+            fireStarConfetti()
+            showStardustToast(result.stardustAmount, 'purchase')
+            refetch()
+            return
+          }
+          if (result.status === 'declined' || result.status === 'error' || result.status === 'voided') {
+            toast.error(result.status === 'declined' ? 'El pago fue rechazado' : 'Error procesando el pago')
+            return
+          }
+        } catch {
+          // Network error — continue
+        }
+      }
+      if (!cancelled) {
+        toast.info('Tu pago está siendo procesado. El Polvo Estelar se acreditará pronto.')
+      }
+    }
+
+    poll()
+
+    return () => { cancelled = true }
+  }, [searchParams, setSearchParams, refetch])
 
   if (authLoading || economyLoading) return <LoadingScreen />
 
@@ -195,7 +259,6 @@ export function ShopPage() {
       <BuyStardustSheet
         open={showBuySheet}
         onOpenChange={setShowBuySheet}
-        onPurchaseComplete={() => refetch()}
       />
     </div>
   )

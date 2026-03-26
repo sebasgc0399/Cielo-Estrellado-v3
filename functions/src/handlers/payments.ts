@@ -6,6 +6,8 @@ import { createHash, randomBytes } from 'node:crypto'
 import type { PaymentRecord, TransactionRecord } from '../domain/contracts.js'
 import { getStardustPackage } from '../domain/stardustPackages.js'
 
+const MAX_CONCURRENT_PENDING_PAYMENTS = 5
+
 class PaymentError extends Error {
   constructor(public code: string, message: string) {
     super(message)
@@ -44,7 +46,18 @@ export async function createPayment(req: Request, res: Response): Promise<void> 
       return
     }
 
-    const reference = `ce-${uid.slice(0, 8)}-${Date.now()}-${randomBytes(4).toString('hex')}`
+    const pendingSnap = await db.collection('payments')
+      .where('userId', '==', uid)
+      .where('status', '==', 'pending')
+      .count()
+      .get()
+
+    if (pendingSnap.data().count >= MAX_CONCURRENT_PENDING_PAYMENTS) {
+      res.status(429).json({ error: 'Demasiados pagos pendientes. Intenta mas tarde.' })
+      return
+    }
+
+    const reference = `ce-${Date.now()}-${randomBytes(8).toString('hex')}`
 
     const integritySignature = createHash('sha256')
       .update(`${reference}${pkg.priceInCents}COP${integritySecret}`)
@@ -108,15 +121,17 @@ export async function wompiWebhook(req: Request, res: Response): Promise<void> {
 
     const eventsSecret = process.env.WOMPI_EVENTS_SECRET
     if (!eventsSecret) {
-      console.error('WOMPI_EVENTS_SECRET not configured')
-      res.status(200).json({ message: 'Configuration error' })
+      console.error('CRITICAL: WOMPI_EVENTS_SECRET not configured — webhook cannot process payments')
+      res.status(500).json({ message: 'Configuration error' })
       return
     }
 
-    // Validate webhook signature: navigate body by property paths, concat + hash
+    // Validate webhook signature: navigate body.data by property paths, concat + hash
+    // Wompi properties are relative to body.data (e.g. "transaction.id" → body.data.transaction.id)
+    const signatureRoot = body.data as Record<string, unknown> | undefined
     const values = properties.map((prop: string) => {
       const parts = prop.split('.')
-      let current: unknown = body
+      let current: unknown = signatureRoot
       for (const part of parts) {
         if (current !== null && typeof current === 'object') {
           current = (current as Record<string, unknown>)[part]
@@ -131,8 +146,18 @@ export async function wompiWebhook(req: Request, res: Response): Promise<void> {
     const computedHash = createHash('sha256').update(concatenated).digest('hex')
 
     if (computedHash !== checksum) {
-      console.warn('Webhook signature mismatch')
+      console.error('SECURITY: Webhook signature mismatch', {
+        receivedChecksum: checksum,
+        ip: req.ip ?? req.headers['x-forwarded-for'] ?? 'unknown',
+        timestamp,
+        event,
+      })
       res.status(200).json({ message: 'Invalid signature' })
+      return
+    }
+
+    if (event !== 'transaction.updated') {
+      res.status(200).json({ message: 'Event type not processed' })
       return
     }
 
@@ -199,7 +224,7 @@ export async function wompiWebhook(req: Request, res: Response): Promise<void> {
       // Atomic: credit stardust + update payment status
       const userRef = db.collection('users').doc(paymentData.userId)
 
-      const newBalance = await db.runTransaction(async (firestoreTransaction) => {
+      await db.runTransaction(async (firestoreTransaction) => {
         const userSnap = await firestoreTransaction.get(userRef)
         if (!userSnap.exists) {
           throw new PaymentError('user_not_found', 'Usuario no encontrado')
@@ -217,19 +242,19 @@ export async function wompiWebhook(req: Request, res: Response): Promise<void> {
           resolvedAt: nowISO,
         })
 
-        return balance
-      })
+        const txRecord: TransactionRecord = {
+          type: 'earn',
+          amount: paymentData.stardustAmount,
+          reason: 'purchase',
+          itemId: paymentData.packageId,
+          balanceAfter: balance,
+          createdAt: nowISO,
+        }
 
-      // Audit log (append-only, outside transaction)
-      const txRecord: TransactionRecord = {
-        type: 'earn',
-        amount: paymentData.stardustAmount,
-        reason: 'purchase',
-        itemId: paymentData.packageId,
-        balanceAfter: newBalance,
-        createdAt: nowISO,
-      }
-      await db.collection('users').doc(paymentData.userId).collection('transactions').add(txRecord)
+        const txDocRef = db.collection('users').doc(paymentData.userId)
+          .collection('transactions').doc()
+        firestoreTransaction.set(txDocRef, txRecord)
+      })
     } else {
       // DECLINED, ERROR, VOIDED
       const mappedStatus = wompiStatus === 'DECLINED' ? 'declined'

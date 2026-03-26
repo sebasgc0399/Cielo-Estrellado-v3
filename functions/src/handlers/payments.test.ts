@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => {
   const transaction = {
     get: vi.fn(),
     update: vi.fn(),
+    set: vi.fn(),
   }
 
   const add = vi.fn().mockResolvedValue({ id: 'tx-id' })
@@ -18,9 +19,14 @@ const mocks = vi.hoisted(() => {
   const paymentsLimit = vi.fn().mockReturnValue({ get: paymentsGet })
   const paymentsWhere = vi.fn()
 
+  const countGet = vi.fn().mockResolvedValue({ data: () => ({ count: 0 }) })
+  const countFn = vi.fn().mockReturnValue({ get: countGet })
+
+  const txDocRef = {}
+
   const userRef = {
     collection: vi.fn((name: string) => {
-      if (name === 'transactions') return { add }
+      if (name === 'transactions') return { add, doc: vi.fn().mockReturnValue(txDocRef) }
       return {}
     }),
   }
@@ -28,12 +34,13 @@ const mocks = vi.hoisted(() => {
   const runTransaction = vi.fn(async (fn: (t: typeof transaction) => unknown) => fn(transaction))
 
   // Make where chainable
-  paymentsWhere.mockReturnValue({ limit: paymentsLimit, where: paymentsWhere })
+  paymentsWhere.mockReturnValue({ limit: paymentsLimit, where: paymentsWhere, count: countFn })
 
   return {
     transaction, add, paymentAdd, paymentDocRef,
     paymentsGet, paymentsLimit, paymentsWhere,
     userRef, runTransaction,
+    countGet, countFn, txDocRef,
   }
 })
 
@@ -114,9 +121,9 @@ function makeWebhookBody(overrides: {
     },
     signature: {
       properties: [
-        'data.transaction.id',
-        'data.transaction.status',
-        'data.transaction.amount_in_cents',
+        'transaction.id',
+        'transaction.status',
+        'transaction.amount_in_cents',
       ],
       checksum: '', // Will be computed below
     },
@@ -161,16 +168,18 @@ beforeEach(() => {
   vi.clearAllMocks()
   mocks.transaction.get.mockReset()
   mocks.transaction.update.mockReset()
+  mocks.transaction.set.mockReset()
   mocks.add.mockResolvedValue({ id: 'tx-id' })
   mocks.paymentAdd.mockResolvedValue({ id: 'payment-doc-id' })
   mocks.paymentsGet.mockResolvedValue({ empty: true, docs: [] })
   mocks.paymentsLimit.mockReturnValue({ get: mocks.paymentsGet })
-  mocks.paymentsWhere.mockReturnValue({ limit: mocks.paymentsLimit, where: mocks.paymentsWhere })
+  mocks.paymentsWhere.mockReturnValue({ limit: mocks.paymentsLimit, where: mocks.paymentsWhere, count: mocks.countFn })
   mocks.runTransaction.mockImplementation(async (fn: Function) => fn(mocks.transaction))
   mocks.userRef.collection.mockImplementation((name: string) => {
-    if (name === 'transactions') return { add: mocks.add }
+    if (name === 'transactions') return { add: mocks.add, doc: vi.fn().mockReturnValue(mocks.txDocRef) }
     return {}
   })
+  mocks.countGet.mockResolvedValue({ data: () => ({ count: 0 }) })
 
   process.env.WOMPI_INTEGRITY_SECRET = INTEGRITY_SECRET
   process.env.WOMPI_PUBLIC_KEY = PUBLIC_KEY
@@ -193,7 +202,7 @@ describe('createPayment', () => {
     expect(res.status).toHaveBeenCalledWith(200)
     const response = res.json.mock.calls[0][0]
     expect(response.paymentId).toBe('payment-doc-id')
-    expect(response.reference).toMatch(/^ce-test-uid-\d+-[a-f0-9]{8}$/)
+    expect(response.reference).toMatch(/^ce-\d+-[a-f0-9]{16}$/)
     expect(response.amountInCents).toBe(500000)
     expect(response.currency).toBe('COP')
     expect(response.integritySignature).toBeTruthy()
@@ -249,6 +258,49 @@ describe('createPayment', () => {
       expect.objectContaining({ error: 'Paquete no existe' }),
     )
   })
+
+  it('rechaza con 429 si el usuario excede el limite de pagos pendientes', async () => {
+    mocks.countGet.mockResolvedValue({ data: () => ({ count: 5 }) })
+
+    const res = makeRes()
+    await createPayment(makeReq({ packageId: 'pack-500' }), res)
+
+    expect(res.status).toHaveBeenCalledWith(429)
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: expect.stringContaining('pendientes') }),
+    )
+    expect(mocks.paymentAdd).not.toHaveBeenCalled()
+  })
+
+  it('permite creacion si pagos pendientes estan bajo el limite', async () => {
+    mocks.countGet.mockResolvedValue({ data: () => ({ count: 4 }) })
+
+    const res = makeRes()
+    await createPayment(makeReq({ packageId: 'pack-500' }), res)
+
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(mocks.paymentAdd).toHaveBeenCalled()
+  })
+
+  it('retorna 500 si WOMPI_INTEGRITY_SECRET no esta configurado', async () => {
+    delete process.env.WOMPI_INTEGRITY_SECRET
+
+    const res = makeRes()
+    await createPayment(makeReq({ packageId: 'pack-500' }), res)
+
+    expect(res.status).toHaveBeenCalledWith(500)
+    expect(mocks.paymentAdd).not.toHaveBeenCalled()
+  })
+
+  it('retorna 500 si WOMPI_PUBLIC_KEY no esta configurado', async () => {
+    delete process.env.WOMPI_PUBLIC_KEY
+
+    const res = makeRes()
+    await createPayment(makeReq({ packageId: 'pack-500' }), res)
+
+    expect(res.status).toHaveBeenCalledWith(500)
+    expect(mocks.paymentAdd).not.toHaveBeenCalled()
+  })
 })
 
 describe('wompiWebhook', () => {
@@ -277,28 +329,27 @@ describe('wompiWebhook', () => {
     )
   })
 
-  it('crea TransactionRecord de audit en aprobacion', async () => {
+  it('crea TransactionRecord de audit dentro de la transaccion', async () => {
     setupPendingPayment()
     mocks.transaction.get.mockResolvedValue({
       exists: true,
       data: () => ({ stardust: 100 }),
     })
-    mocks.runTransaction.mockImplementation(async (fn: Function) => {
-      await fn(mocks.transaction)
-      return 600
-    })
 
     const res = makeRes()
     await wompiWebhook(makeReq(makeWebhookBody()), res)
 
-    expect(mocks.add).toHaveBeenCalledWith(
+    expect(mocks.transaction.set).toHaveBeenCalledWith(
+      expect.anything(),
       expect.objectContaining({
         type: 'earn',
         amount: 500,
         reason: 'purchase',
         itemId: 'pack-500',
+        balanceAfter: 600,
       }),
     )
+    expect(mocks.add).not.toHaveBeenCalled()
   })
 
   it('actualiza a declined en webhook DECLINED', async () => {
@@ -382,6 +433,86 @@ describe('wompiWebhook', () => {
     await wompiWebhook(makeReq(makeWebhookBody()), res)
 
     expect(res.status).toHaveBeenCalledWith(200)
+  })
+
+  it('rechaza webhook con amount mismatch sin procesar', async () => {
+    setupPendingPayment({ amountInCents: 999999 })
+
+    const res = makeRes()
+    await wompiWebhook(makeReq(makeWebhookBody()), res)
+
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Amount mismatch' }),
+    )
+    expect(mocks.runTransaction).not.toHaveBeenCalled()
+  })
+
+  it('retorna 200 con error cuando usuario no existe en APPROVED', async () => {
+    setupPendingPayment()
+    mocks.transaction.get.mockResolvedValue({
+      exists: false,
+      data: () => undefined,
+    })
+
+    const res = makeRes()
+    await wompiWebhook(makeReq(makeWebhookBody()), res)
+
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Internal error, logged' }),
+    )
+  })
+
+  it('retorna 500 si WOMPI_EVENTS_SECRET no esta configurado', async () => {
+    delete process.env.WOMPI_EVENTS_SECRET
+
+    const res = makeRes()
+    await wompiWebhook(makeReq(makeWebhookBody()), res)
+
+    expect(res.status).toHaveBeenCalledWith(500)
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Configuration error' }),
+    )
+  })
+
+  it('ignora eventos que no son transaction.updated', async () => {
+    const body = makeWebhookBody()
+    body.event = 'nequi_token.updated'
+
+    const res = makeRes()
+    await wompiWebhook(makeReq(body), res)
+
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Event type not processed' }),
+    )
+    expect(mocks.paymentsGet).not.toHaveBeenCalled()
+  })
+
+  it('mapea status desconocido a error', async () => {
+    const { paymentRef } = setupPendingPayment()
+
+    const res = makeRes()
+    await wompiWebhook(makeReq(makeWebhookBody({ status: 'UNKNOWN_STATUS' })), res)
+
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(paymentRef.update).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'error' }),
+    )
+  })
+
+  it('es idempotente para pagos ya declinados', async () => {
+    setupPendingPayment({ status: 'declined' })
+
+    const res = makeRes()
+    await wompiWebhook(makeReq(makeWebhookBody({ status: 'DECLINED' })), res)
+
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Already processed' }),
+    )
+    expect(mocks.runTransaction).not.toHaveBeenCalled()
   })
 })
 

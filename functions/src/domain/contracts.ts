@@ -123,7 +123,6 @@ export interface StardustPackage {
   name: string
   stardustAmount: number
   priceInCents: number
-  bonusPercent: number
 }
 
 export const DEFAULT_SKY_PERSONALIZATION: SkyPersonalization = {
