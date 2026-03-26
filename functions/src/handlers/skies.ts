@@ -1,7 +1,7 @@
 import type { Request } from 'firebase-functions/v2/https'
 import type { Response } from 'express'
 import { authenticateRequest } from '../middleware/auth.js'
-import { db } from '../lib/firebaseAdmin.js'
+import { db, storage } from '../lib/firebaseAdmin.js'
 import { getSkyWithAccess } from '../lib/getSkyWithAccess.js'
 import { SKY_TITLE_MAX_LENGTH } from '../domain/policies.js'
 import { SHOP_CATALOG } from '../domain/shopCatalog.js'
@@ -292,6 +292,19 @@ export async function deleteSky(req: Request, res: Response): Promise<void> {
     // Delete the sky doc itself last
     allOps.push({ type: 'delete', ref: skyRef })
 
+    // Clean up star images from Storage
+    const imageDeletePromises: Promise<void>[] = []
+    for (const doc of starsSnap.docs) {
+      const starData = doc.data()
+      if (starData.imagePath) {
+        imageDeletePromises.push(
+          storage.bucket().file(starData.imagePath).delete().then(() => {}).catch(() => {
+            console.warn(`Failed to delete storage file: ${starData.imagePath}`)
+          })
+        )
+      }
+    }
+
     for (let i = 0; i < allOps.length; i += BATCH_LIMIT) {
       const batch = db.batch()
       const chunk = allOps.slice(i, i + BATCH_LIMIT)
@@ -304,6 +317,9 @@ export async function deleteSky(req: Request, res: Response): Promise<void> {
       }
       await batch.commit()
     }
+
+    // Await storage cleanup (best-effort, don't block response)
+    await Promise.allSettled(imageDeletePromises)
 
     res.status(200).json({ ok: true })
   } catch (error) {

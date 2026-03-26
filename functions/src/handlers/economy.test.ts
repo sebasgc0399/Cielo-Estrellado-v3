@@ -73,7 +73,8 @@ function makeRes() {
   const res: Record<string, ReturnType<typeof vi.fn>> = {}
   res.json = vi.fn().mockReturnValue(res)
   res.status = vi.fn().mockReturnValue(res)
-  return res as unknown as Response & { status: ReturnType<typeof vi.fn>; json: ReturnType<typeof vi.fn> }
+  res.set = vi.fn().mockReturnValue(res)
+  return res as unknown as Response & { status: ReturnType<typeof vi.fn>; json: ReturnType<typeof vi.fn>; set: ReturnType<typeof vi.fn> }
 }
 
 function userSnap(data: Record<string, unknown>) {

@@ -7,3 +7,6 @@ firebase-key.json
 *.log
 *.tsbuildinfo
 functions/lib
+
+# Coverage reports
+coverage/

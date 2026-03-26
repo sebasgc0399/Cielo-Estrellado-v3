@@ -109,7 +109,7 @@ export function StarFormSheet({
             const path = await uploadStarImage(skyId, res.starId, imageFile)
             await api(`/api/skies/${skyId}/stars/${res.starId}`, {
               method: 'PATCH',
-              body: JSON.stringify({ imagePath: path }),
+              body: JSON.stringify({ imagePath: path, title: trimTitle }),
             })
           } catch {
             toast.warning('Estrella creada pero la imagen no se pudo subir')

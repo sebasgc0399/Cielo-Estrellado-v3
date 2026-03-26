@@ -1,7 +1,7 @@
 import type { Request } from 'firebase-functions/v2/https'
 import type { Response } from 'express'
 import { authenticateRequest } from '../middleware/auth.js'
-import { db } from '../lib/firebaseAdmin.js'
+import { db, storage } from '../lib/firebaseAdmin.js'
 import { getSkyWithAccess } from '../lib/getSkyWithAccess.js'
 import { STAR_TITLE_MAX_LENGTH, STAR_MESSAGE_MAX_LENGTH } from '../domain/policies.js'
 import type { DocumentReference } from '@google-cloud/firestore'
@@ -394,6 +394,14 @@ export async function deleteStar(req: Request, res: Response): Promise<void> {
       deletedAt: now,
       deletedByUserId: decoded.uid,
     })
+
+    if (star.imagePath) {
+      try {
+        await storage.bucket().file(star.imagePath).delete()
+      } catch {
+        console.warn(`Failed to delete storage file: ${star.imagePath}`)
+      }
+    }
 
     res.status(200).json({ ok: true })
   } catch (error) {
