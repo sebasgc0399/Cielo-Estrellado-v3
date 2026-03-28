@@ -2,7 +2,7 @@ import type { Request } from 'firebase-functions/v2/https'
 import type { Response } from 'express'
 import { authenticateRequest } from '../middleware/auth.js'
 import { db } from '../lib/firebaseAdmin.js'
-import type { DocumentReference, QueryDocumentSnapshot, Transaction } from '@google-cloud/firestore'
+import type { QueryDocumentSnapshot, Transaction } from '@google-cloud/firestore'
 import type { TransactionRecord, InventoryItem } from '../domain/contracts.js'
 import {
   DAILY_LOGIN_REWARD,
@@ -36,18 +36,7 @@ export async function getEconomy(req: Request, res: Response): Promise<void> {
     const currentWeek = getISOWeek(now)
     const nowISO = now.toISOString()
 
-    let rewardsDaily = 0
-    let rewardsWeekly = 0
-    let rewardsStreak = 0
-    let streakDays = 0
-
     const result = await db.runTransaction(async (transaction: Transaction) => {
-      // Reset en cada intento — previene valores stale en retry por contención
-      rewardsDaily = 0
-      rewardsWeekly = 0
-      rewardsStreak = 0
-      streakDays = 0
-
       const userSnap = await transaction.get(userRef)
 
       if (!userSnap.exists) {
@@ -69,12 +58,12 @@ export async function getEconomy(req: Request, res: Response): Promise<void> {
           previousStreak,
           lastDailyRewardDate,
           weeklyBonusWeek,
-          previousStardust: stardust,
+          rewards: { daily: 0, weekly: 0, streak: 0, streakDays: 0 },
         }
       }
 
       // Daily login reward
-      rewardsDaily = DAILY_LOGIN_REWARD
+      const rewardsDaily = DAILY_LOGIN_REWARD
 
       // Streak calculation
       let newStreak: number
@@ -87,9 +76,9 @@ export async function getEconomy(req: Request, res: Response): Promise<void> {
         newPreviousStreak = loginStreak
         newStreak = 1
       }
-      streakDays = newStreak
 
       // Streak bonuses
+      let rewardsStreak = 0
       if (newStreak === 7) {
         rewardsStreak = STREAK_7_BONUS
       } else if (newStreak === 30) {
@@ -97,6 +86,7 @@ export async function getEconomy(req: Request, res: Response): Promise<void> {
       }
 
       // Weekly bonus
+      let rewardsWeekly = 0
       let newWeeklyBonusWeek = weeklyBonusWeek
       if (weeklyBonusWeek !== currentWeek) {
         rewardsWeekly = WEEKLY_BONUS
@@ -129,65 +119,38 @@ export async function getEconomy(req: Request, res: Response): Promise<void> {
 
       transaction.update(userRef, updatePayload)
 
+      // Audit log consolidado DENTRO de la transaccion
+      const rewardDetails: Array<{ amount: number; reason: string }> = []
+      if (rewardsDaily > 0) rewardDetails.push({ amount: rewardsDaily, reason: 'daily_login' })
+      if (rewardsWeekly > 0) rewardDetails.push({ amount: rewardsWeekly, reason: 'weekly_bonus' })
+      if (rewardsStreak > 0) rewardDetails.push({ amount: rewardsStreak, reason: newStreak === 7 ? 'streak_7' : 'streak_30' })
+
+      if (rewardDetails.length > 0) {
+        const txDocRef = userRef.collection('transactions').doc()
+        transaction.set(txDocRef, {
+          type: 'earn',
+          amount: totalRewards,
+          reason: 'daily_rewards',
+          itemId: null,
+          balanceAfter: newStardust,
+          createdAt: nowISO,
+          details: rewardDetails,
+        } satisfies TransactionRecord)
+      }
+
       return {
         stardust: newStardust,
         loginStreak: newStreak,
         previousStreak: newPreviousStreak,
         lastDailyRewardDate: todayUTC,
         weeklyBonusWeek: newWeeklyBonusWeek,
-        previousStardust: stardust,
+        rewards: { daily: rewardsDaily, weekly: rewardsWeekly, streak: rewardsStreak, streakDays: newStreak },
       }
     })
 
     if (result === null) {
       res.status(404).json({ error: 'Usuario no encontrado' })
       return
-    }
-
-    // Create transaction docs for rewards (outside transaction, append-only)
-    const txPromises: Promise<DocumentReference>[] = []
-
-    if (rewardsDaily > 0) {
-      const tx: TransactionRecord = {
-        type: 'earn',
-        amount: rewardsDaily,
-        reason: 'daily_login',
-        itemId: null,
-        balanceAfter: result.previousStardust + rewardsDaily,
-        createdAt: nowISO,
-      }
-      txPromises.push(userRef.collection('transactions').add(tx))
-    }
-
-    if (rewardsWeekly > 0) {
-      const tx: TransactionRecord = {
-        type: 'earn',
-        amount: rewardsWeekly,
-        reason: 'weekly_bonus',
-        itemId: null,
-        balanceAfter: result.previousStardust + rewardsDaily + rewardsWeekly,
-        createdAt: nowISO,
-      }
-      txPromises.push(userRef.collection('transactions').add(tx))
-    }
-
-    if (rewardsStreak > 0) {
-      const tx: TransactionRecord = {
-        type: 'earn',
-        amount: rewardsStreak,
-        reason: streakDays === 7 ? 'streak_7' : 'streak_30',
-        itemId: null,
-        balanceAfter: result.previousStardust + rewardsDaily + rewardsWeekly + rewardsStreak,
-        createdAt: nowISO,
-      }
-      txPromises.push(userRef.collection('transactions').add(tx))
-    }
-
-    // Write audit logs (non-critical — balance is already updated)
-    try {
-      await Promise.all(txPromises)
-    } catch (logError) {
-      console.error('Failed to create audit log (balance already updated):', logError instanceof Error ? logError.message : logError)
     }
 
     // Read inventory
@@ -204,12 +167,7 @@ export async function getEconomy(req: Request, res: Response): Promise<void> {
       lastDailyRewardDate: result.lastDailyRewardDate,
       weeklyBonusWeek: result.weeklyBonusWeek,
       inventory,
-      rewards: {
-        daily: rewardsDaily,
-        weekly: rewardsWeekly,
-        streak: rewardsStreak,
-        streakDays,
-      },
+      rewards: result.rewards,
     })
   } catch (error) {
     console.error('getEconomy failed:', error)

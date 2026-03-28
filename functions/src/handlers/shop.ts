@@ -74,19 +74,19 @@ export async function purchase(req: Request, res: Response): Promise<void> {
       const newDocRef = userRef.collection('inventory').doc()
       transaction.create(newDocRef, inventoryDoc)
 
+      // Audit log DENTRO de la transaccion
+      const txDocRef = userRef.collection('transactions').doc()
+      transaction.set(txDocRef, {
+        type: 'spend',
+        amount: item.price,
+        reason: 'shop_purchase',
+        itemId: item.itemId,
+        balanceAfter: newBalance,
+        createdAt: nowISO,
+      } satisfies TransactionRecord)
+
       return { newBalance, itemId: item.itemId }
     })
-
-    // Audit log (append-only, outside transaction)
-    const txRecord: TransactionRecord = {
-      type: 'spend',
-      amount: item.price,
-      reason: 'shop_purchase',
-      itemId: item.itemId,
-      balanceAfter: result.newBalance,
-      createdAt: nowISO,
-    }
-    await userRef.collection('transactions').add(txRecord)
 
     res.status(200).json({ newBalance: result.newBalance, itemId: result.itemId })
   } catch (error) {

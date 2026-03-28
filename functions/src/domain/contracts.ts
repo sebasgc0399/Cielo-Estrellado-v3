@@ -99,6 +99,7 @@ export interface TransactionRecord {
   itemId: string | null
   balanceAfter: number
   createdAt: IsoDateString
+  details?: Array<{ amount: number; reason: string }>
 }
 
 export type PaymentStatus = 'pending' | 'approved' | 'declined' | 'error' | 'voided'

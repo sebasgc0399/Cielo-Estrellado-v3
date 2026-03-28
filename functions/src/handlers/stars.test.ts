@@ -6,30 +6,29 @@ const TODAY = '2026-01-15'
 const YESTERDAY = '2026-01-14'
 
 const mocks = vi.hoisted(() => {
-  const transaction = { get: vi.fn(), update: vi.fn() }
+  const transaction = { get: vi.fn(), update: vi.fn(), set: vi.fn() }
   const txAdd = vi.fn().mockResolvedValue({ id: 'tx-id' })
+  const txDocRef = { id: 'tx-doc-ref' }
   const starSet = vi.fn().mockResolvedValue(undefined)
-  const starsQueryGet = vi.fn().mockResolvedValue({ empty: false })
 
   const starsChain: Record<string, ReturnType<typeof vi.fn>> = {
     doc: vi.fn().mockReturnValue({ id: 'star-123', set: starSet }),
     where: vi.fn(),
     limit: vi.fn(),
-    get: starsQueryGet,
   }
   starsChain.where.mockReturnValue(starsChain)
   starsChain.limit.mockReturnValue(starsChain)
 
   const userRef = {
     collection: vi.fn((name: string) => {
-      if (name === 'transactions') return { add: txAdd }
+      if (name === 'transactions') return { add: txAdd, doc: vi.fn().mockReturnValue(txDocRef) }
       return {}
     }),
   }
 
   const runTransaction = vi.fn(async (fn: Function) => fn(transaction))
 
-  return { transaction, txAdd, starSet, starsQueryGet, starsChain, userRef, runTransaction }
+  return { transaction, txAdd, txDocRef, starSet, starsChain, userRef, runTransaction }
 })
 
 vi.mock('../middleware/auth.js', () => ({
@@ -81,15 +80,15 @@ beforeEach(() => {
   vi.clearAllMocks()
   mocks.transaction.get.mockReset()
   mocks.transaction.update.mockReset()
+  mocks.transaction.set.mockReset()
   mocks.starSet.mockResolvedValue(undefined)
-  mocks.starsQueryGet.mockResolvedValue({ empty: false })
   mocks.txAdd.mockResolvedValue({ id: 'tx-id' })
   mocks.runTransaction.mockImplementation(async (fn: Function) => fn(mocks.transaction))
   mocks.starsChain.where.mockReturnValue(mocks.starsChain)
   mocks.starsChain.limit.mockReturnValue(mocks.starsChain)
   mocks.starsChain.doc.mockReturnValue({ id: 'star-123', set: mocks.starSet })
   mocks.userRef.collection.mockImplementation((name: string) => {
-    if (name === 'transactions') return { add: mocks.txAdd }
+    if (name === 'transactions') return { add: mocks.txAdd, doc: vi.fn().mockReturnValue(mocks.txDocRef) }
     return {}
   })
 })
@@ -98,9 +97,11 @@ afterEach(() => { vi.useRealTimers() })
 
 describe('createStar rewards', () => {
   it('otorga STAR_CREATION_REWARD al crear estrella', async () => {
-    mocks.transaction.get.mockResolvedValue({
-      data: () => ({ stardust: 100, createdStarsToday: 0, lastStarCreationDate: null }),
-    })
+    mocks.transaction.get
+      .mockResolvedValueOnce({
+        data: () => ({ stardust: 100, createdStarsToday: 0, lastStarCreationDate: null }),
+      })
+      .mockResolvedValueOnce({ empty: false })
 
     const res = makeRes()
     await createStar(makeReq(), res)
@@ -113,10 +114,11 @@ describe('createStar rewards', () => {
   })
 
   it('otorga FIRST_STAR_BONUS si es primera estrella en cielo', async () => {
-    mocks.starsQueryGet.mockResolvedValue({ empty: true })
-    mocks.transaction.get.mockResolvedValue({
-      data: () => ({ stardust: 100, createdStarsToday: 0, lastStarCreationDate: null }),
-    })
+    mocks.transaction.get
+      .mockResolvedValueOnce({
+        data: () => ({ stardust: 100, createdStarsToday: 0, lastStarCreationDate: null }),
+      })
+      .mockResolvedValueOnce({ empty: true })
 
     const res = makeRes()
     await createStar(makeReq(), res)
@@ -129,9 +131,11 @@ describe('createStar rewards', () => {
   })
 
   it('respeta cap diario de MAX_STARS_REWARD_PER_DAY', async () => {
-    mocks.transaction.get.mockResolvedValue({
-      data: () => ({ stardust: 100, createdStarsToday: 10, lastStarCreationDate: TODAY }),
-    })
+    mocks.transaction.get
+      .mockResolvedValueOnce({
+        data: () => ({ stardust: 100, createdStarsToday: 10, lastStarCreationDate: TODAY }),
+      })
+      .mockResolvedValueOnce({ empty: false })
 
     const res = makeRes()
     await createStar(makeReq(), res)
@@ -143,9 +147,11 @@ describe('createStar rewards', () => {
   })
 
   it('resetea contador si es nuevo dia', async () => {
-    mocks.transaction.get.mockResolvedValue({
-      data: () => ({ stardust: 100, createdStarsToday: 10, lastStarCreationDate: YESTERDAY }),
-    })
+    mocks.transaction.get
+      .mockResolvedValueOnce({
+        data: () => ({ stardust: 100, createdStarsToday: 10, lastStarCreationDate: YESTERDAY }),
+      })
+      .mockResolvedValueOnce({ empty: false })
 
     const res = makeRes()
     await createStar(makeReq(), res)
@@ -155,6 +161,28 @@ describe('createStar rewards', () => {
       expect.anything(),
       expect.objectContaining({ stardust: 105, createdStarsToday: 1 }),
     )
+  })
+
+  it('escribe audit logs dentro de la transaccion con transaction.set', async () => {
+    mocks.transaction.get
+      .mockResolvedValueOnce({
+        data: () => ({ stardust: 100, createdStarsToday: 0, lastStarCreationDate: null }),
+      })
+      .mockResolvedValueOnce({ empty: true })
+
+    const res = makeRes()
+    await createStar(makeReq(), res)
+
+    expect(mocks.transaction.set).toHaveBeenCalledTimes(2)
+    expect(mocks.transaction.set).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ type: 'earn', reason: 'star_creation', amount: 5 }),
+    )
+    expect(mocks.transaction.set).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ type: 'earn', reason: 'first_star_bonus', amount: 25 }),
+    )
+    expect(mocks.txAdd).not.toHaveBeenCalled()
   })
 
   it('reward es best-effort — estrella se crea aunque reward falle', async () => {

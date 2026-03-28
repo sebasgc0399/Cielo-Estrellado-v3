@@ -8,23 +8,25 @@ const mocks = vi.hoisted(() => {
     get: vi.fn(),
     update: vi.fn(),
     create: vi.fn(),
+    set: vi.fn(),
   }
 
   const add = vi.fn().mockResolvedValue({ id: 'tx-id' })
   const inventoryGet = vi.fn().mockResolvedValue({ docs: [] })
   const inventoryDocRef = { id: 'new-inv-doc' }
+  const txDocRef = { id: 'tx-doc-ref' }
 
   const userRef = {
     collection: vi.fn((name: string) => {
       if (name === 'inventory') return { doc: vi.fn().mockReturnValue(inventoryDocRef), get: inventoryGet }
-      if (name === 'transactions') return { add }
+      if (name === 'transactions') return { add, doc: vi.fn().mockReturnValue(txDocRef) }
       return {}
     }),
   }
 
   const runTransaction = vi.fn(async (fn: (t: typeof transaction) => unknown) => fn(transaction))
 
-  return { transaction, add, inventoryGet, inventoryDocRef, userRef, runTransaction }
+  return { transaction, add, txDocRef, inventoryGet, inventoryDocRef, userRef, runTransaction }
 })
 
 vi.mock('../middleware/auth.js', () => ({
@@ -73,11 +75,12 @@ beforeEach(() => {
   mocks.transaction.get.mockReset()
   mocks.transaction.update.mockReset()
   mocks.transaction.create.mockReset()
+  mocks.transaction.set.mockReset()
   mocks.add.mockResolvedValue({ id: 'tx-id' })
   mocks.runTransaction.mockImplementation(async (fn: Function) => fn(mocks.transaction))
   mocks.userRef.collection.mockImplementation((name: string) => {
     if (name === 'inventory') return { doc: vi.fn().mockReturnValue(mocks.inventoryDocRef), get: mocks.inventoryGet }
-    if (name === 'transactions') return { add: mocks.add }
+    if (name === 'transactions') return { add: mocks.add, doc: vi.fn().mockReturnValue(mocks.txDocRef) }
     return {}
   })
 })
@@ -159,13 +162,14 @@ describe('purchase', () => {
     expect(mocks.runTransaction).not.toHaveBeenCalled()
   })
 
-  it('crea TransactionRecord de audit', async () => {
+  it('crea TransactionRecord de audit dentro de la transaccion', async () => {
     setupPurchase({ stardust: 1000 })
 
     const res = makeRes()
     await purchase(makeReq({ itemId: 'theme-aurora-borealis' }), res)
 
-    expect(mocks.add).toHaveBeenCalledWith(
+    expect(mocks.transaction.set).toHaveBeenCalledWith(
+      expect.anything(),
       expect.objectContaining({
         type: 'spend',
         amount: 800,
@@ -173,5 +177,6 @@ describe('purchase', () => {
         itemId: 'theme-aurora-borealis',
       }),
     )
+    expect(mocks.add).not.toHaveBeenCalled()
   })
 })

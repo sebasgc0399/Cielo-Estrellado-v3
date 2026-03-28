@@ -13,10 +13,12 @@ const mocks = vi.hoisted(() => {
   const transaction = {
     get: vi.fn(),
     update: vi.fn(),
+    set: vi.fn(),
   }
 
   const add = vi.fn().mockResolvedValue({ id: 'tx-id' })
   const inventoryGet = vi.fn().mockResolvedValue({ docs: [] })
+  const txDocRef = { id: 'tx-doc-ref' }
 
   const queryGet = vi.fn()
   const docGet = vi.fn().mockResolvedValue({ exists: false })
@@ -43,7 +45,7 @@ const mocks = vi.hoisted(() => {
 
   const runTransaction = vi.fn(async (fn: (t: typeof transaction) => unknown) => fn(transaction))
 
-  return { transaction, add, inventoryGet, queryGet, docGet, txCollection, userRef, runTransaction }
+  return { transaction, add, txDocRef, inventoryGet, queryGet, docGet, txCollection, userRef, runTransaction }
 })
 
 vi.mock('../middleware/auth.js', () => ({
@@ -89,6 +91,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   // Restore default implementations cleared by clearAllMocks
   mocks.add.mockResolvedValue({ id: 'tx-id' })
+  mocks.transaction.set.mockReset()
   mocks.inventoryGet.mockResolvedValue({ docs: [] })
   mocks.runTransaction.mockImplementation(async (fn: (t: typeof mocks.transaction) => unknown) => fn(mocks.transaction))
   mocks.txCollection.orderBy.mockReturnValue(mocks.txCollection)
@@ -310,6 +313,31 @@ describe('getEconomy', () => {
         rewards: expect.objectContaining({ daily: 15, weekly: 20 }),
       }),
     )
+  })
+
+  it('escribe audit log consolidado dentro de la transaccion', async () => {
+    mocks.transaction.get.mockResolvedValue(userSnap({
+      stardust: 100, loginStreak: 0, previousStreak: 0,
+      lastDailyRewardDate: null, weeklyBonusWeek: null,
+    }))
+
+    const res = makeRes()
+    await getEconomy(makeReq(), res)
+
+    expect(mocks.transaction.set).toHaveBeenCalledTimes(1)
+    expect(mocks.transaction.set).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        type: 'earn',
+        amount: 35,
+        reason: 'daily_rewards',
+        details: expect.arrayContaining([
+          expect.objectContaining({ amount: 15, reason: 'daily_login' }),
+          expect.objectContaining({ amount: 20, reason: 'weekly_bonus' }),
+        ]),
+      }),
+    )
+    expect(mocks.add).not.toHaveBeenCalled()
   })
 
   it('retorna 404 si usuario no existe', async () => {

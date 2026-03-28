@@ -5,8 +5,9 @@ const FIXED_NOW = new Date('2026-01-15T12:00:00Z')
 const TODAY = '2026-01-15'
 
 const mocks = vi.hoisted(() => {
-  const transaction = { get: vi.fn(), update: vi.fn() }
+  const transaction = { get: vi.fn(), update: vi.fn(), set: vi.fn() }
   const txAdd = vi.fn().mockResolvedValue({ id: 'tx-id' })
+  const txDocRef = { id: 'tx-doc-ref' }
   const userGet = vi.fn()
   const membersGet = vi.fn()
 
@@ -19,14 +20,14 @@ const mocks = vi.hoisted(() => {
   const userRef = {
     get: userGet,
     collection: vi.fn((name: string) => {
-      if (name === 'transactions') return { add: txAdd }
+      if (name === 'transactions') return { add: txAdd, doc: vi.fn().mockReturnValue(txDocRef) }
       return {}
     }),
   }
 
   const runTransaction = vi.fn(async (fn: Function) => fn(transaction))
 
-  return { transaction, txAdd, userGet, membersGet, membersQuery, userRef, runTransaction }
+  return { transaction, txAdd, txDocRef, userGet, membersGet, membersQuery, userRef, runTransaction }
 })
 
 vi.mock('../middleware/auth.js', () => ({
@@ -79,11 +80,12 @@ beforeEach(() => {
   vi.clearAllMocks()
   mocks.transaction.get.mockReset()
   mocks.transaction.update.mockReset()
+  mocks.transaction.set.mockReset()
   mocks.txAdd.mockResolvedValue({ id: 'tx-id' })
   mocks.runTransaction.mockImplementation(async (fn: Function) => fn(mocks.transaction))
   mocks.membersQuery.where.mockReturnValue(mocks.membersQuery)
   mocks.userRef.collection.mockImplementation((name: string) => {
-    if (name === 'transactions') return { add: mocks.txAdd }
+    if (name === 'transactions') return { add: mocks.txAdd, doc: vi.fn().mockReturnValue(mocks.txDocRef) }
     return {}
   })
 })
@@ -115,6 +117,27 @@ describe('acceptInviteHandler', () => {
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({ rewards: expect.objectContaining({ stardustEarned: 30 }) }),
     )
+  })
+
+  it('escribe audit log dentro de la transaccion con transaction.set', async () => {
+    mocks.userGet.mockResolvedValue({ data: () => ({ maxMemberships: 20 }) })
+    mocks.membersGet.mockResolvedValue({ size: 5 })
+    mocks.transaction.get.mockResolvedValue({
+      data: () => ({ stardust: 100, acceptedInvitesToday: 0, lastInviteAcceptDate: null }),
+    })
+
+    const res = makeRes()
+    await acceptInviteHandler(makeReq(), res)
+
+    expect(mocks.transaction.set).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        type: 'earn',
+        amount: 30,
+        reason: 'invite_accepted',
+      }),
+    )
+    expect(mocks.txAdd).not.toHaveBeenCalled()
   })
 
   it('respeta cap diario de invitaciones', async () => {

@@ -81,6 +81,11 @@ export async function acceptInviteHandler(req: Request, res: Response): Promise<
 
     const userRef = db.collection('users').doc(decoded.uid)
     let stardustEarned = 0
+    // Trade-off de diseno: la recompensa de PE es una transaccion SEPARADA de acceptInvite().
+    // acceptInvite() opera sobre invite+member (coleccion skies), el reward opera sobre el user.
+    // Si el reward falla, el usuario acepta la invite pero no recibe PE — la membresia es
+    // la operacion primaria. Combinar ambas transacciones aumentaria la superficie de contencion
+    // sin beneficio proporcional, ya que el reward es best-effort (try/catch no-bloqueante).
     try {
       const rewardResult = await db.runTransaction(async (transaction) => {
         const freshSnap = await transaction.get(userRef)
@@ -104,22 +109,25 @@ export async function acceptInviteHandler(req: Request, res: Response): Promise<
             acceptedInvitesToday,
             lastInviteAcceptDate: todayUTC,
           })
-          return { reward: INVITE_ACCEPTED_REWARD, newBalance }
+
+          // Audit log DENTRO de la transaccion
+          const txDocRef = userRef.collection('transactions').doc()
+          transaction.set(txDocRef, {
+            type: 'earn',
+            amount: INVITE_ACCEPTED_REWARD,
+            reason: 'invite_accepted',
+            itemId: null,
+            balanceAfter: newBalance,
+            createdAt: new Date().toISOString(),
+          } satisfies TransactionRecord)
+
+          return { reward: INVITE_ACCEPTED_REWARD }
         }
         return null
       })
 
       if (rewardResult) {
         stardustEarned = rewardResult.reward
-        const tx: TransactionRecord = {
-          type: 'earn',
-          amount: rewardResult.reward,
-          reason: 'invite_accepted',
-          itemId: null,
-          balanceAfter: rewardResult.newBalance,
-          createdAt: new Date().toISOString(),
-        }
-        await userRef.collection('transactions').add(tx)
       }
     } catch (rewardError) {
       console.error('Invite accept reward failed (non-blocking):', rewardError)

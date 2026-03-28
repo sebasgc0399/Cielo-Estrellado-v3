@@ -11,6 +11,7 @@ type TransactionsResponse = { transactions: Transaction[]; nextCursor: string | 
 const REASON_LABELS: Record<string, string> = {
   welcome: 'Bienvenida',
   daily_login: 'Login diario',
+  daily_rewards: 'Recompensas diarias',
   star_creation: 'Estrella creada',
   first_star_bonus: 'Primera estrella',
   streak_7: 'Racha de 7 días',
