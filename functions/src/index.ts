@@ -43,3 +43,6 @@ export const api = onRequest(async (req, res) => {
   if (handleCors(req, res)) return
   await router(req, res)
 })
+
+export { processVideoClip } from './handlers/processVideoClip.js'
+export { cleanupZombieStars } from './handlers/cleanupZombieStars.js'
