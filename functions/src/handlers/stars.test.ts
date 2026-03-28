@@ -65,6 +65,7 @@ vi.mock('../lib/firebaseAdmin.js', () => ({
 }))
 
 import { createStar, updateStar, deleteStar } from './stars'
+import { getSkyWithAccess } from '../lib/getSkyWithAccess.js'
 
 function makeReq() {
   return {
@@ -345,6 +346,179 @@ describe('deleteStar — image cleanup', () => {
     expect(res.status).toHaveBeenCalledWith(200)
     expect(starRef.update).toHaveBeenCalledWith(
       expect.objectContaining({ deletedAt: expect.any(String) }),
+    )
+  })
+})
+
+// ─── createStar — access control ─────────────────────────────
+
+describe('createStar — access control', () => {
+  it('rechaza con 404 si getSkyWithAccess retorna not_found', async () => {
+    vi.mocked(getSkyWithAccess).mockResolvedValueOnce({ ok: false, reason: 'not_found' } as any)
+
+    const res = makeRes()
+    await createStar(makeReq(), res)
+
+    expect(res.status).toHaveBeenCalledWith(404)
+    expect(res.json).toHaveBeenCalledWith({ error: 'Cielo no encontrado' })
+  })
+
+  it('rechaza con 500 si getSkyWithAccess retorna error', async () => {
+    vi.mocked(getSkyWithAccess).mockResolvedValueOnce({ ok: false, reason: 'error' } as any)
+
+    const res = makeRes()
+    await createStar(makeReq(), res)
+
+    expect(res.status).toHaveBeenCalledWith(500)
+    expect(res.json).toHaveBeenCalledWith({ error: 'Error interno al verificar acceso' })
+  })
+
+  it('rechaza con 403 si rol es viewer', async () => {
+    vi.mocked(getSkyWithAccess).mockResolvedValueOnce({
+      ok: true, sky: { title: 'Test Sky' }, member: { role: 'viewer', status: 'active' },
+    } as any)
+
+    const res = makeRes()
+    await createStar(makeReq(), res)
+
+    expect(res.status).toHaveBeenCalledWith(403)
+    expect(res.json).toHaveBeenCalledWith({ error: 'No tienes permisos para crear estrellas en este cielo' })
+    expect(mocks.starSet).not.toHaveBeenCalled()
+  })
+})
+
+// ─── updateStar — permisos ───────────────────────────────────
+
+describe('updateStar — permisos', () => {
+  const baseStar = {
+    title: 'Existing Star',
+    message: null,
+    xNormalized: 0.5,
+    yNormalized: 0.5,
+    imagePath: null,
+    deletedAt: null,
+    authorUserId: 'test-uid',
+  }
+
+  function setupStarRef(overrides: Record<string, unknown> = {}) {
+    const starRef = {
+      get: vi.fn().mockResolvedValue({
+        exists: true,
+        data: () => ({ ...baseStar, ...overrides }),
+      }),
+      update: vi.fn().mockResolvedValue(undefined),
+    }
+    mocks.starsChain.doc.mockReturnValue(starRef)
+    return starRef
+  }
+
+  it('owner puede editar estrella de otro usuario', async () => {
+    // Default mock: getSkyWithAccess retorna role: owner
+    const starRef = setupStarRef({ authorUserId: 'other-user' })
+
+    const res = makeRes()
+    await updateStar(makeUpdateReq(), res)
+
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(starRef.update).toHaveBeenCalled()
+  })
+
+  it('editor puede editar su propia estrella', async () => {
+    vi.mocked(getSkyWithAccess).mockResolvedValueOnce({
+      ok: true, sky: { title: 'Test Sky' }, member: { role: 'editor', status: 'active' },
+    } as any)
+    const starRef = setupStarRef({ authorUserId: 'test-uid' })
+
+    const res = makeRes()
+    await updateStar(makeUpdateReq(), res)
+
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(starRef.update).toHaveBeenCalled()
+  })
+
+  it('editor no puede editar estrella de otro usuario', async () => {
+    vi.mocked(getSkyWithAccess).mockResolvedValueOnce({
+      ok: true, sky: { title: 'Test Sky' }, member: { role: 'editor', status: 'active' },
+    } as any)
+    setupStarRef({ authorUserId: 'other-user' })
+
+    const res = makeRes()
+    await updateStar(makeUpdateReq(), res)
+
+    expect(res.status).toHaveBeenCalledWith(403)
+    expect(res.json).toHaveBeenCalledWith({ error: 'No tienes permisos para editar esta estrella' })
+  })
+
+  it('retorna 404 si estrella esta soft-deleted', async () => {
+    setupStarRef({ deletedAt: '2026-01-01T00:00:00Z' })
+
+    const res = makeRes()
+    await updateStar(makeUpdateReq(), res)
+
+    expect(res.status).toHaveBeenCalledWith(404)
+    expect(res.json).toHaveBeenCalledWith({ error: 'Estrella no encontrada' })
+  })
+})
+
+// ─── deleteStar — permisos ───────────────────────────────────
+
+describe('deleteStar — permisos', () => {
+  function setupStarRef(overrides: Record<string, unknown> = {}) {
+    const starRef = {
+      get: vi.fn().mockResolvedValue({
+        exists: true,
+        data: () => ({
+          deletedAt: null,
+          authorUserId: 'test-uid',
+          imagePath: null,
+          ...overrides,
+        }),
+      }),
+      update: vi.fn().mockResolvedValue(undefined),
+    }
+    mocks.starsChain.doc.mockReturnValue(starRef)
+    return starRef
+  }
+
+  it('editor no puede eliminar estrella de otro usuario', async () => {
+    vi.mocked(getSkyWithAccess).mockResolvedValueOnce({
+      ok: true, sky: { title: 'Test Sky' }, member: { role: 'editor', status: 'active' },
+    } as any)
+    setupStarRef({ authorUserId: 'other-user' })
+
+    const res = makeRes()
+    await deleteStar(makeDeleteReq(), res)
+
+    expect(res.status).toHaveBeenCalledWith(403)
+    expect(res.json).toHaveBeenCalledWith({ error: 'No tienes permisos para eliminar esta estrella' })
+  })
+
+  it('retorna 404 si estrella no existe', async () => {
+    const starRef = {
+      get: vi.fn().mockResolvedValue({ exists: false }),
+      update: vi.fn(),
+    }
+    mocks.starsChain.doc.mockReturnValue(starRef)
+
+    const res = makeRes()
+    await deleteStar(makeDeleteReq(), res)
+
+    expect(res.status).toHaveBeenCalledWith(404)
+    expect(res.json).toHaveBeenCalledWith({ error: 'Estrella no encontrada' })
+  })
+
+  it('marca deletedAt y deletedByUserId al eliminar', async () => {
+    const starRef = setupStarRef()
+
+    const res = makeRes()
+    await deleteStar(makeDeleteReq(), res)
+
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(starRef.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deletedAt: expect.any(String),
+        deletedByUserId: 'test-uid',
+      }),
     )
   })
 })
