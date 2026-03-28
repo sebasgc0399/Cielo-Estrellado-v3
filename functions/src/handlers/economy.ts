@@ -27,6 +27,20 @@ function getYesterday(todayUTC: string): string {
   return d.toISOString().slice(0, 10)
 }
 
+/**
+ * GET /user/economy — Returns user economy data and triggers daily reward claiming.
+ *
+ * DESIGN NOTE: This GET endpoint has intentional side effects. It calculates and
+ * credits daily login rewards, weekly bonuses, and streak bonuses within a Firestore
+ * transaction. This design was chosen over a separate POST /claim endpoint because:
+ *
+ * 1. Rewards are idempotent within the same UTC day (lastDailyRewardDate check)
+ * 2. Cache-Control: private, no-store prevents proxy/CDN caching
+ * 3. A single endpoint is simpler than claim+read for frontend integration
+ *
+ * The frontend triggers this on mount via useUserEconomy hook.
+ * See: audits/07-economia.md (M1) for full analysis.
+ */
 export async function getEconomy(req: Request, res: Response): Promise<void> {
   try {
     res.set('Cache-Control', 'private, no-store')
@@ -82,7 +96,7 @@ export async function getEconomy(req: Request, res: Response): Promise<void> {
       let rewardsStreak = 0
       if (newStreak === 7) {
         rewardsStreak = STREAK_7_BONUS
-      } else if (newStreak === 30) {
+      } else if (newStreak > 0 && newStreak % 30 === 0) {
         rewardsStreak = STREAK_30_BONUS
       }
 
@@ -210,6 +224,7 @@ export async function getTransactions(req: Request, res: Response): Promise<void
         itemId: (data.itemId as string) ?? null,
         balanceAfter: data.balanceAfter as number,
         createdAt: data.createdAt as string,
+        ...(data.details ? { details: data.details as Array<{ amount: number; reason: string }> } : {}),
       }
     })
 

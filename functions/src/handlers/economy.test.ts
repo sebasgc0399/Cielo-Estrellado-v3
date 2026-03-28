@@ -227,6 +227,57 @@ describe('getEconomy', () => {
     )
   })
 
+  it('otorga bonus de racha 60 (multiplo de 30)', async () => {
+    mocks.transaction.get.mockResolvedValue(userSnap({
+      stardust: 500,
+      lastDailyRewardDate: YESTERDAY,
+      loginStreak: 59,
+      previousStreak: 0,
+      weeklyBonusWeek: CURRENT_WEEK,
+    }))
+
+    const res = makeRes()
+    await getEconomy(makeReq(), res)
+
+    const body = res.json.mock.calls[0][0]
+    expect(body.rewards.streak).toBe(350)
+    expect(body.rewards.streakDays).toBe(60)
+  })
+
+  it('NO otorga bonus de racha en dia 31 (no es multiplo de 30)', async () => {
+    mocks.transaction.get.mockResolvedValue(userSnap({
+      stardust: 500,
+      lastDailyRewardDate: YESTERDAY,
+      loginStreak: 30,
+      previousStreak: 0,
+      weeklyBonusWeek: CURRENT_WEEK,
+    }))
+
+    const res = makeRes()
+    await getEconomy(makeReq(), res)
+
+    const body = res.json.mock.calls[0][0]
+    expect(body.rewards.streak).toBe(0)
+    expect(body.rewards.streakDays).toBe(31)
+  })
+
+  it('otorga bonus de racha 90 (multiplo de 30)', async () => {
+    mocks.transaction.get.mockResolvedValue(userSnap({
+      stardust: 500,
+      lastDailyRewardDate: YESTERDAY,
+      loginStreak: 89,
+      previousStreak: 0,
+      weeklyBonusWeek: CURRENT_WEEK,
+    }))
+
+    const res = makeRes()
+    await getEconomy(makeReq(), res)
+
+    const body = res.json.mock.calls[0][0]
+    expect(body.rewards.streak).toBe(350)
+    expect(body.rewards.streakDays).toBe(90)
+  })
+
   it('otorga weekly bonus una vez por semana ISO', async () => {
     mocks.transaction.get.mockResolvedValue(userSnap({
       stardust: 100, loginStreak: 0, previousStreak: 0,
@@ -396,6 +447,61 @@ describe('getTransactions', () => {
     const body = res.json.mock.calls[0][0]
     expect(body.transactions).toHaveLength(0)
     expect(body.nextCursor).toBeNull()
+  })
+
+  it('incluye details cuando existen en la transaccion', async () => {
+    mocks.queryGet.mockResolvedValue({
+      docs: [
+        {
+          id: 'tx-1',
+          data: () => ({
+            type: 'earn',
+            amount: 35,
+            reason: 'daily_rewards',
+            itemId: null,
+            balanceAfter: 135,
+            createdAt: '2026-01-15T12:00:00Z',
+            details: [
+              { amount: 15, reason: 'daily_login' },
+              { amount: 20, reason: 'weekly_bonus' },
+            ],
+          }),
+        },
+      ],
+    })
+
+    const res = makeRes()
+    await getTransactions(makeReq(), res)
+
+    const body = res.json.mock.calls[0][0]
+    expect(body.transactions[0].details).toEqual([
+      { amount: 15, reason: 'daily_login' },
+      { amount: 20, reason: 'weekly_bonus' },
+    ])
+  })
+
+  it('omite details cuando no existen en la transaccion', async () => {
+    mocks.queryGet.mockResolvedValue({
+      docs: [
+        {
+          id: 'tx-1',
+          data: () => ({
+            type: 'spend',
+            amount: 800,
+            reason: 'shop_purchase',
+            itemId: 'theme-aurora',
+            balanceAfter: 200,
+            createdAt: '2026-01-15T12:00:00Z',
+          }),
+        },
+      ],
+    })
+
+    const res = makeRes()
+    await getTransactions(makeReq(), res)
+
+    const body = res.json.mock.calls[0][0]
+    expect(body.transactions[0]).not.toHaveProperty('details')
   })
 
   it('ignora cursor excesivamente largo (> 128 chars)', async () => {

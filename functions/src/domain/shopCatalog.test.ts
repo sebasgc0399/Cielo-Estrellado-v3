@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { SHOP_CATALOG, getShopItem, getShopItemsByCategory } from './shopCatalog'
 
 describe('shopCatalog', () => {
@@ -50,5 +52,23 @@ describe('shopCatalog', () => {
     for (const theme of themes) {
       expect([600, 800, 1200, 1500]).toContain(theme.price)
     }
+  })
+})
+
+describe('frontend/backend catalog sync', () => {
+  it('shopCatalog.ts es identico en frontend y functions', () => {
+    const backendPath = resolve(process.cwd(), 'src/domain/shopCatalog.ts')
+    const frontendPath = resolve(process.cwd(), '../frontend/src/domain/shopCatalog.ts')
+    const backend = readFileSync(backendPath, 'utf-8')
+    const frontend = readFileSync(frontendPath, 'utf-8')
+    expect(backend).toBe(frontend)
+  })
+
+  it('economyRules.ts es identico en frontend y functions', () => {
+    const backendPath = resolve(process.cwd(), 'src/domain/economyRules.ts')
+    const frontendPath = resolve(process.cwd(), '../frontend/src/domain/economy.ts')
+    const backend = readFileSync(backendPath, 'utf-8')
+    const frontend = readFileSync(frontendPath, 'utf-8')
+    expect(backend).toBe(frontend)
   })
 })
