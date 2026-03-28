@@ -108,7 +108,11 @@ export async function createStar(req: Request, res: Response): Promise<void> {
     const starData: StarRecord = {
       title: rawTitle,
       message: rawMessage || null,
-      imagePath: null,
+      mediaType: null,
+      mediaStatus: null,
+      mediaPath: null,
+      thumbnailPath: null,
+      mediaDuration: null,
       xNormalized: coords.x,
       yNormalized: coords.y,
       year,
@@ -247,7 +251,40 @@ export async function updateStar(req: Request, res: Response): Promise<void> {
       message?: unknown
       xNormalized?: unknown
       yNormalized?: unknown
-      imagePath?: unknown
+      mediaPath?: unknown
+      mediaStatus?: unknown
+    }
+
+    // mediaStatus transition — exclusive operation (§5.5)
+    if ('mediaStatus' in body) {
+      const otherFields = ['title', 'message', 'xNormalized', 'yNormalized', 'mediaPath']
+      const hasOtherFields = otherFields.some(f => f in body)
+      if (hasOtherFields) {
+        res.status(400).json({ error: 'mediaStatus debe enviarse solo, sin otros campos' })
+        return
+      }
+
+      const requested = body.mediaStatus
+      const current = star.mediaStatus ?? null
+
+      const allowed =
+        (current === null && requested === 'processing') ||
+        (current === 'processing' && requested === null) ||
+        (current === 'error' && requested === null)
+
+      if (!allowed) {
+        res.status(400).json({ error: 'Transición de mediaStatus no permitida' })
+        return
+      }
+
+      const now = new Date().toISOString()
+      await starRef.update({
+        mediaStatus: requested,
+        updatedAt: now,
+        updatedByUserId: decoded.uid,
+      })
+      res.status(200).json({ ok: true })
+      return
     }
 
     // No HTML sanitization — React escapes {text} in JSX by default.
@@ -304,36 +341,39 @@ export async function updateStar(req: Request, res: Response): Promise<void> {
       }
     }
 
-    // imagePath — attach-only
-    let newImagePath: string | null | undefined = undefined
-    if ('imagePath' in body) {
-      if (body.imagePath === null) {
-        newImagePath = null
-      } else if (typeof body.imagePath === 'string') {
+    // mediaPath — attach-only
+    let newMediaPath: string | null | undefined = undefined
+    let newMediaType: string | null | undefined = undefined
+    if ('mediaPath' in body) {
+      if (body.mediaPath === null) {
+        newMediaPath = null
+        newMediaType = null
+      } else if (typeof body.mediaPath === 'string') {
         const canonicalPath = `stars/${skyId}/${starId}/image`
-        if (body.imagePath !== canonicalPath) {
-          res.status(400).json({ error: 'imagePath no válido' })
+        if (body.mediaPath !== canonicalPath) {
+          res.status(400).json({ error: 'mediaPath no válido' })
           return
         }
-        if (star.imagePath !== null) {
-          res.status(409).json({ error: 'La estrella ya tiene una imagen' })
+        if (star.mediaPath !== null) {
+          res.status(409).json({ error: 'La estrella ya tiene media' })
           return
         }
-        newImagePath = body.imagePath
+        newMediaPath = body.mediaPath
+        newMediaType = 'image'
       } else {
-        res.status(400).json({ error: 'imagePath debe ser una cadena o null' })
+        res.status(400).json({ error: 'mediaPath debe ser una cadena o null' })
         return
       }
     }
 
     // Early return if nothing changed
-    const imagePathChanged = newImagePath !== undefined && newImagePath !== star.imagePath
+    const mediaPathChanged = newMediaPath !== undefined && newMediaPath !== star.mediaPath
     if (
       rawTitle === star.title &&
       newMessage === star.message &&
       parsedX === star.xNormalized &&
       parsedY === star.yNormalized &&
-      !imagePathChanged
+      !mediaPathChanged
     ) {
       res.status(200).json({ ok: true })
       return
@@ -349,8 +389,14 @@ export async function updateStar(req: Request, res: Response): Promise<void> {
       updatedByUserId: decoded.uid,
     }
 
-    if (newImagePath !== undefined) {
-      updatePayload.imagePath = newImagePath
+    if (newMediaPath !== undefined) {
+      updatePayload.mediaPath = newMediaPath
+      updatePayload.mediaType = newMediaType
+      if (newMediaPath === null) {
+        updatePayload.mediaStatus = null
+        updatePayload.thumbnailPath = null
+        updatePayload.mediaDuration = null
+      }
     }
 
     await starRef.update(updatePayload)
@@ -406,15 +452,21 @@ export async function deleteStar(req: Request, res: Response): Promise<void> {
       deletedByUserId: decoded.uid,
     })
 
-    // DECISION: hard-delete imagen en soft-delete de star.
-    // La imagen es inaccesible tras soft-delete (storage rules verifican deletedAt == null).
+    // DECISION: hard-delete media en soft-delete de star.
+    // El media es inaccesible tras soft-delete (storage rules verifican deletedAt == null).
     // Si se implementa restore, considerar mover a path "trash/" en vez de eliminar.
     // Ver audits/09-storage-uploads.md B1.
-    if (star.imagePath) {
+    const mediaPath = star.mediaPath ?? (star as unknown as Record<string, unknown>).imagePath as string | null
+    const filesToDelete: string[] = []
+    if (mediaPath) filesToDelete.push(mediaPath)
+    if (star.thumbnailPath) filesToDelete.push(star.thumbnailPath)
+    filesToDelete.push(`temp/${skyId}/${starId}/raw`)
+
+    for (const filePath of filesToDelete) {
       try {
-        await storage.bucket().file(star.imagePath).delete()
+        await storage.bucket().file(filePath).delete()
       } catch {
-        console.warn(`Failed to delete storage file: ${star.imagePath}`)
+        console.warn(`Failed to delete storage file: ${filePath}`)
       }
     }
 

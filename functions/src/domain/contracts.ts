@@ -9,6 +9,8 @@ export type UserStatus = 'active' | 'pending' | 'disabled'
 export type InviteRole = 'editor' | 'viewer'
 export type InviteStatus = 'pending' | 'accepted' | 'revoked' | 'expired'
 export type SkyDensity = 'low' | 'medium' | 'high'
+export type MediaType = 'image' | 'video'
+export type MediaStatus = 'processing' | 'ready' | 'error'
 
 export interface SkyPersonalization {
   density: SkyDensity
@@ -37,6 +39,8 @@ export interface UserRecord {
   weeklyBonusWeek: string | null
   acceptedInvitesToday: number
   lastInviteAcceptDate: string | null
+  videoProcessedToday: number
+  lastVideoProcessDate: string | null
 }
 
 export interface SkyRecord {
@@ -54,7 +58,11 @@ export interface SkyRecord {
 export interface StarRecord {
   title: string
   message: string | null
-  imagePath: string | null
+  mediaType: MediaType | null
+  mediaStatus: MediaStatus | null
+  mediaPath: string | null
+  thumbnailPath: string | null
+  mediaDuration: number | null
   xNormalized: number | null
   yNormalized: number | null
   year: number | null

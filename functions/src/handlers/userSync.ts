@@ -64,6 +64,8 @@ export async function userSync(req: Request, res: Response): Promise<void> {
         weeklyBonusWeek: null,
         acceptedInvitesToday: 0,
         lastInviteAcceptDate: null,
+        videoProcessedToday: 0,
+        lastVideoProcessDate: null,
       }
 
       await db.runTransaction(async (t) => {

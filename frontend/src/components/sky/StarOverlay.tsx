@@ -32,25 +32,25 @@ export function StarOverlay({ star, role, currentUserId, onClose, onEdit }: Star
   const [fullscreen, setFullscreen] = useState(false)
 
   useEffect(() => {
-    if (!star.imagePath) return
+    if (!star.mediaPath) return
     setImageLoaded(false)
     let cancelled = false
 
-    const cached = downloadUrlCache.get(star.imagePath)
+    const cached = downloadUrlCache.get(star.mediaPath)
     if (cached) {
       setImageUrl(cached)
       return
     }
 
-    getDownloadURL(ref(storage, star.imagePath))
+    getDownloadURL(ref(storage, star.mediaPath))
       .then((url) => {
-        downloadUrlCache.set(star.imagePath!, url)
+        downloadUrlCache.set(star.mediaPath!, url)
         if (!cancelled) setImageUrl(url)
       })
       .catch(() => {})
 
     return () => { cancelled = true }
-  }, [star.imagePath])
+  }, [star.mediaPath])
 
   // Close fullscreen on Escape
   useEffect(() => {
@@ -76,7 +76,7 @@ export function StarOverlay({ star, role, currentUserId, onClose, onEdit }: Star
           className="space-y-4 px-2 pb-6"
         >
           {/* Image with skeleton loading */}
-          {star.imagePath && (
+          {star.mediaPath && (
             <div className="relative overflow-hidden rounded-xl" style={{ minHeight: 120 }}>
               {/* Skeleton shimmer */}
               {!imageLoaded && (

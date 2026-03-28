@@ -10,4 +10,6 @@ export const DEFAULT_USER_ECONOMY = {
   weeklyBonusWeek: null,
   acceptedInvitesToday: 0,
   lastInviteAcceptDate: null,
+  videoProcessedToday: 0,
+  lastVideoProcessDate: null,
 } as const

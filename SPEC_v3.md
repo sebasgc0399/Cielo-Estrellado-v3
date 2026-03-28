@@ -34,8 +34,10 @@ El enfoque es **hibrido**: la UI de recorte es client-side (ligera, sin procesam
      de recorte (start/end)
      Solo UI, sin procesar
 
-  3. PATCH estrella:
-     mediaStatus: 'processing'
+  3. PATCH /api/skies/{skyId}
+     /stars/{starId}
+     { mediaStatus: 'processing' }
+     via handler updateStar
      (UI muestra spinner
       inmediatamente)
 
@@ -45,8 +47,8 @@ El enfoque es **hibrido**: la UI de recorte es client-side (ligera, sin procesam
      skyId, starId              metadata del archivo)
 
      Si upload falla:
-     rollback mediaStatus
-     a null, mostrar error
+     PATCH { mediaStatus: null }
+     via updateStar (rollback)
 
                              5. Trigger onFinalize ──────▶ 6. Lee customMetadata
                                                              (trimStart, trimEnd)
@@ -195,10 +197,13 @@ Sigue el mismo patron que `createdStarsToday` / `lastStarCreationDate`. La Cloud
               Cliente                    Cloud Function
               ───────                    ──────────────
   null ──→ processing ──→ ready
-    ↑          │
-    │          ╰──→ error ──╯
-    │                    │
-    ╰────────────────────╯
+    ↑       │  ↑  │
+    │       │  │  ╰──→ error ──╯
+    │       │  │               │
+    │       ╰──╯               │
+    │    (rollback             │
+    │     upload fallido)      │
+    ╰──────────────────────────╯
                 (retry)
 ```
 
@@ -206,18 +211,21 @@ Sigue el mismo patron que `createdStarsToday` / `lastStarCreationDate`. La Cloud
 
 | Desde | Hacia | Quien | Cuando |
 |-------|-------|-------|--------|
-| `null` | `processing` | Cliente | Antes de iniciar upload del video raw |
-| `processing` | `ready` | Cloud Function | Procesamiento exitoso, clip final guardado |
-| `processing` | `error` | Cloud Function | Fallo en cualquier paso del procesamiento |
-| `error` | `null` | Cliente | Usuario toca "Reintentar" (reset para nuevo intento) |
+| `null` | `processing` | Cliente via `updateStar` handler | Antes de iniciar upload del video raw |
+| `processing` | `null` | Cliente via `updateStar` handler | Rollback: `uploadBytes()` fallo, el raw no llego a Storage |
+| `processing` | `ready` | Cloud Function (Admin SDK) | Procesamiento exitoso, clip final guardado |
+| `processing` | `error` | Cloud Function (Admin SDK) | Fallo en cualquier paso del procesamiento |
+| `error` | `null` | Cliente via `updateStar` handler | Usuario toca "Reintentar" (reset para nuevo intento) |
 | `ready` | — | — | Estado final. Attach-only, no se modifica. |
 
-### 5.3 Restriccion: No se puede cancelar en `processing`
+### 5.3 Restriccion: No se expone "Cancelar" en `processing`
 
-El cliente **no puede** transicionar de `processing` a `null`. Razones:
-- La Cloud Function ya puede estar procesando. Cancelar no la detiene.
-- Si el cliente escribe `null` y la Cloud Function termina despues, escribiria `ready` resucitando un video "cancelado". Race condition.
-- El procesamiento toma 5-15 segundos. No justifica mecanismo de cancelacion.
+El cliente **puede** transicionar `processing → null` **solo como rollback automatico** cuando `uploadBytes()` falla (el raw nunca llego a Storage, la Cloud Function no se dispara). La UI **no** expone un boton "Cancelar" manual porque:
+- La Cloud Function puede estar procesando. Cancelar no la detiene.
+- Si el usuario cancela manualmente despues de un upload exitoso y la Cloud Function termina despues, escribiria `ready` resucitando un video "cancelado". Race condition.
+- El procesamiento toma 5-15 segundos. No justifica mecanismo de cancelacion manual.
+
+**Seguridad del rollback automatico:** El rollback solo se ejecuta cuando `uploadBytes()` lanza excepcion. En ese caso, el archivo raw no llego a `temp/` (o llego incompleto, lo cual no dispara `onFinalize`), por lo que la Cloud Function nunca corre y no hay race condition. El edge case de "upload completo server-side pero el cliente recibe error de red" es cubierto por el cron de cleanup (§5.4 Nivel 2).
 
 **UX:** El boton "Cancelar" desaparece una vez que el upload inicia. El usuario ve spinner hasta `ready` o `error`.
 
@@ -227,17 +235,34 @@ Dos niveles de cleanup para evitar estrellas zombies en `processing`:
 
 **Nivel 1 — Rollback inmediato del cliente (primera linea de defensa):**
 
-Si `uploadBytes()` falla (timeout, red, error de Storage), el cliente resetea inmediatamente:
+Los try/catch estan separados para distinguir que paso fallo y evitar rollbacks innecesarios (mismo patron que SPEC-storage-uploads Fix 1 aplico para imagenes):
 
 ```typescript
+// Paso A: marcar como procesando via API
 try {
-  await updateDoc(starRef, { mediaStatus: 'processing' });
-  await uploadBytes(tempRef, file, { customMetadata });
+  await api.patch(`/skies/${skyId}/stars/${starId}`, { mediaStatus: 'processing' });
 } catch (err) {
-  await updateDoc(starRef, { mediaStatus: null });  // rollback
-  // mostrar toast de error
+  // PATCH fallo (red, servidor caido). mediaStatus sigue siendo null.
+  // No hay nada que rollbackear.
+  showToast('Error al iniciar procesamiento. Intenta de nuevo.');
+  return;
+}
+
+// Paso B: subir video raw
+try {
+  await uploadBytes(tempRef, file, { customMetadata });
+  // Exito. Cloud Function toma el control via onFinalize.
+} catch (err) {
+  // Upload fallo. mediaStatus quedo en 'processing' pero el raw no llego a Storage.
+  // Rollback: processing → null (seguro porque la CF no se disparo).
+  await api.patch(`/skies/${skyId}/stars/${starId}`, { mediaStatus: null });
+  showToast('Error al subir el video. Intenta de nuevo.');
 }
 ```
+
+> **Nota:** Las transiciones de `mediaStatus` van por el handler `updateStar` (PATCH via API), no por escritura directa a Firestore. Esto mantiene la arquitectura API-only del proyecto donde todas las escrituras pasan por Cloud Functions.
+
+**Por que separar los try/catch:** Si el paso A falla a nivel de red, `mediaStatus` sigue siendo `null`. Un rollback a `null` seria una transicion `null → null` que el handler rechazaria (no esta en las transiciones permitidas). Separando, evitamos el rollback innecesario.
 
 Esto cubre: errores de red, timeouts, errores de permisos de Storage, usuario pierde conexion durante upload.
 
@@ -249,6 +274,44 @@ Cloud Function scheduled cada 15 minutos:
 - Borra cualquier residuo en `temp/{skyId}/{starId}/`.
 
 Cubre: usuario cierra la app mid-upload, Cloud Function crashea (OOM, timeout, deploy durante ejecucion), cualquier fallo no anticipado.
+
+### 5.5 Validacion de mediaStatus en updateStar
+
+El handler `updateStar` debe aplicar dos reglas al recibir `mediaStatus` en el body del PATCH:
+
+**Regla 1 — Exclusividad:** Si `mediaStatus` esta presente en el body, debe ser el **unico campo**. No se permite mezclar transiciones de estado con edicion de contenido en el mismo request.
+
+```typescript
+// En updateStar handler:
+if ('mediaStatus' in body) {
+  const otherKeys = Object.keys(body).filter(k => k !== 'mediaStatus');
+  if (otherKeys.length > 0) {
+    return res.status(400).json({ error: 'mediaStatus debe enviarse solo, sin otros campos' });
+  }
+}
+```
+
+**Justificacion:** Un request como `{ title: 'nuevo', mediaStatus: 'processing' }` es ambiguo y peligroso. Si la transicion de estado falla, ¿se aplica el cambio de titulo? ¿O viceversa? Separar garantiza atomicidad: o se transiciona el estado, o se edita contenido, nunca ambos.
+
+**Regla 2 — Transiciones permitidas:** Si `mediaStatus` esta presente, validar que la transicion es legal:
+
+```typescript
+const currentStatus = star.mediaStatus ?? null;
+const newStatus = body.mediaStatus ?? null;
+
+const allowedTransitions: Record<string, string[]> = {
+  'null': ['processing'],           // iniciar upload
+  'processing': ['null'],           // rollback (upload fallo)
+  'error': ['null'],                // retry
+};
+
+const allowed = allowedTransitions[String(currentStatus)] ?? [];
+if (!allowed.includes(String(newStatus))) {
+  return res.status(400).json({ error: 'Transicion de mediaStatus no permitida' });
+}
+```
+
+> **Nota:** `ready` y `error` solo los escribe la Cloud Function via Admin SDK. El handler rechaza cualquier intento del cliente de escribir estos valores.
 
 ---
 
@@ -268,7 +331,7 @@ Cubre: usuario cierra la app mid-upload, Cloud Function crashea (OOM, timeout, d
 
 1. **Leer customMetadata** del archivo subido (`trimStart`, `trimEnd`, `skyId`, `starId`, `userId`).
 2. **Validar** que la estrella existe en Firestore, no esta eliminada, y `mediaStatus == 'processing'`. Si no es `processing`, abortar y borrar el raw (upload huerfano).
-3. **Validar rate limit:** verificar `videoProcessedToday` del usuario. Si excede 5/hora, escribir `mediaStatus: 'error'` y borrar raw.
+3. **Validar rate limit:** verificar `videoProcessedToday` del usuario. Si excede 5/dia, escribir `mediaStatus: 'error'` y borrar raw.
 4. **Descargar** video raw a `/tmp/`.
 5. **Validar tamano:** si excede 50MB, rechazar.
 6. **FFmpeg** recorta y comprime:
@@ -381,12 +444,18 @@ El cliente observa `mediaStatus` via `onSnapshot` y reacciona:
 ### 7.4 Flujo de Upload con Rollback
 
 ```typescript
-async function attachVideoClip(starRef, tempRef, file, trimData) {
+async function attachVideoClip(skyId, starId, tempRef, file, trimData) {
+  // Paso A: marcar como procesando via API (UI reacciona inmediato)
   try {
-    // 1. Marcar como procesando (UI reacciona inmediato)
-    await updateDoc(starRef, { mediaStatus: 'processing' });
+    await api.patch(`/skies/${skyId}/stars/${starId}`, { mediaStatus: 'processing' });
+  } catch (err) {
+    // PATCH fallo. mediaStatus sigue null. No hay nada que rollbackear.
+    showToast('Error al iniciar procesamiento.');
+    return;
+  }
 
-    // 2. Subir video raw con metadata de recorte
+  // Paso B: subir video raw con metadata de recorte
+  try {
     await uploadBytes(tempRef, file, {
       customMetadata: {
         skyId: trimData.skyId,
@@ -397,25 +466,28 @@ async function attachVideoClip(starRef, tempRef, file, trimData) {
       }
     });
 
-    // 3. Exito del upload. Cloud Function toma el control.
-    //    Cliente espera via onSnapshot.
+    // Exito del upload. Cloud Function toma el control.
+    // Cliente espera via onSnapshot.
 
   } catch (err) {
-    // Upload fallo: rollback inmediato
-    await updateDoc(starRef, { mediaStatus: null });
+    // Upload fallo: rollback processing → null (seguro, la CF no se disparo)
+    await api.patch(`/skies/${skyId}/stars/${starId}`, { mediaStatus: null });
     showToast('Error al subir el video. Intenta de nuevo.');
   }
 }
 ```
 
+> **Nota:** Los try/catch estan separados (mismo patron que SPEC-storage-uploads Fix 1 para imagenes). Si el paso A falla, `mediaStatus` sigue en `null` y no hay rollback. El rollback `processing → null` solo ocurre si el paso B falla, momento en que el raw no llego a Storage y la Cloud Function no se dispara (sin race condition). El rollback es intencionalmente mas simple que el retry con backoff de imagenes porque la Cloud Function gestiona el estado final (`ready`/`error`), no el cliente.
+
 ### 7.5 Flujo de Reintento
 
 ```
 Estado: 'error' → Usuario toca "Reintentar"
-  1. Cliente setea mediaStatus: null (reset)
+  1. Cliente envia PATCH /api/skies/{skyId}/stars/{starId}
+     con { mediaStatus: null } via updateStar (reset)
   2. UI vuelve a mostrar selector de medio
   3. Usuario selecciona video (puede ser el mismo u otro)
-  4. Flujo normal: PATCH 'processing' → upload → esperar
+  4. Flujo normal: PATCH { mediaStatus: 'processing' } → upload → esperar
 ```
 
 El raw anterior ya fue limpiado por la Cloud Function al escribir `'error'`. La ruta `temp/{skyId}/{starId}/raw` esta libre para el nuevo upload.
@@ -432,30 +504,19 @@ El raw anterior ya fue limpiado por la Cloud Function al escribir `'error'`. La 
 
 ## 8. Security Rules
 
-### 8.1 Firestore Rules (mediaStatus)
+### 8.1 Firestore Rules (sin cambios)
 
-Las transiciones de `mediaStatus` desde el cliente estan restringidas. Solo la Cloud Function (via Admin SDK) puede escribir `'ready'` o `'error'`.
+No se requieren cambios a las Firestore Rules para stars. La regla actual `allow write: if false` se mantiene intacta.
 
-```javascript
-// Dentro de la rule de update de stars
-allow update: if
-  request.auth.uid == resource.data.authorUserId
-  && (
-    // Si mediaStatus no cambia → edicion normal (titulo, mensaje, etc.)
-    request.resource.data.mediaStatus == resource.data.mediaStatus
-    ||
-    // Si mediaStatus cambia → solo transiciones permitidas al cliente:
-    //   null → 'processing' (iniciar upload)
-    //   'error' → null (reset para reintento)
-    (request.resource.data.mediaStatus in [null, 'processing']
-     && resource.data.mediaStatus in [null, 'error'])
-  );
-```
+Las transiciones de `mediaStatus` se validan en el handler `updateStar` (server-side, ver §5.5):
+- `null → processing`: permitida (cliente inicia upload)
+- `processing → null`: permitida (rollback automatico cuando upload falla, ver §5.3)
+- `error → null`: permitida (cliente reintenta)
+- Cualquier otra transicion desde el cliente: rechazada por el handler con 400.
+- `processing → ready`, `processing → error`: escritas por la Cloud Function via Admin SDK (bypasea rules).
+- Si `mediaStatus` viene acompanado de otros campos en el body: rechazado con 400 (ver §5.5).
 
-Esto permite:
-- Editar titulo/mensaje/coordenadas en **cualquier** estado sin restriccion.
-- El cliente solo puede: `null → processing` y `error → null`.
-- `processing → ready`, `processing → error`: solo Cloud Function via Admin SDK (bypassa rules).
+> **Justificacion:** El proyecto enruta todas las escrituras por Cloud Functions via API HTTP. El cliente nunca escribe directamente a Firestore (`updateDoc`/`setDoc` no se usan en el frontend). Mantener esta invariante evita abrir writes selectivos en las rules y simplifica el modelo de seguridad.
 
 ### 8.2 Storage Rules
 
@@ -530,6 +591,19 @@ Cubre edge cases que ni el cliente ni la Cloud Function de procesamiento atrapan
 - Cloud Function crashea sin escribir `'error'` (OOM, timeout duro, deploy durante ejecucion).
 - Cualquier fallo no anticipado.
 
+### 9.4 En Eliminacion de Cielo (deleteSky cascade)
+
+Al eliminar un cielo, el handler `deleteSky` hace cascade de todas las estrellas y borra sus archivos en Storage. Actualmente borra `imagePath` en batches de 10 con `Promise.allSettled`. Este flujo se extiende para limpiar medios de video:
+
+Para cada estrella en el cielo:
+- `mediaPath` (imagen o clip final, segun `mediaType`)
+- `thumbnailPath` (si existe, solo para videos)
+
+Adicionalmente, limpieza global del cielo:
+- `temp/{skyId}/**/raw` (cualquier upload en progreso de cualquier estrella del cielo)
+
+El patron existente de batches (`IMAGE_DELETE_BATCH_SIZE = 10`) y `Promise.allSettled` (best-effort, no bloquea el soft-delete) se mantiene para los nuevos paths.
+
 ---
 
 ## 10. Estimacion de Costos
@@ -555,12 +629,15 @@ El costo incremental es minimo porque los clips finales (~2MB) son comparables e
 
 ### Fase 1 — Modelo de datos y migracion
 
+> **Nota:** `contracts.ts` y `policies.ts` existen en dos copias manuales que deben mantenerse sincronizadas: `functions/src/domain/` (backend) y `frontend/src/domain/` (frontend). Cada cambio en esta fase debe aplicarse a **ambos** archivos. Lo mismo para `defaults.ts`.
+
 - Actualizar `StarRecord` en `contracts.ts` (agregar `mediaType`, `mediaStatus`, renombrar `imagePath` → `mediaPath`, agregar `thumbnailPath`, `mediaDuration`).
 - Agregar `videoProcessedToday` y `lastVideoProcessDate` a `UserRecord`.
 - Actualizar `policies.ts` con nuevas constantes (limites de video, tipos aceptados).
 - Migracion de datos existentes: script para actualizar estrellas con `imagePath` al nuevo esquema.
 - Actualizar handlers existentes (`createStar`, `updateStar`, `deleteStar`) para el nuevo esquema.
-- Actualizar Firestore Security Rules con validacion condicional de `mediaStatus`.
+- Extender `updateStar` para validar transiciones de `mediaStatus` (`null → processing`, `processing → null`, `error → null`) y la regla de exclusividad (ver §5.5).
+- Extender `deleteStar` y `deleteSky` para limpiar `mediaPath`, `thumbnailPath` y `temp/` (ver §9.1 y §9.4).
 - Actualizar Storage Rules con reglas para `temp/`, clips y thumbnails.
 - Tests del nuevo modelo y transiciones.
 
@@ -578,7 +655,7 @@ El costo incremental es minimo porque los clips finales (~2MB) son comparables e
 
 - Componente `VideoTrimmer.tsx` (preview + sliders de rango).
 - Extender `StarFormSheet.tsx` con selector imagen/video.
-- Funcion `uploadStarVideo()` en `storage.ts` (PATCH processing → upload con customMetadata → rollback en error).
+- Funcion `uploadStarVideo()` en `storage.ts` (PATCH via API para `mediaStatus: 'processing'` → upload con customMetadata → rollback via API en error).
 - Observar `mediaStatus` via `onSnapshot` para estados de carga.
 - Flujo de reintento (reset a null → flujo normal).
 - Tests del componente y del flujo de upload.
@@ -606,8 +683,10 @@ El costo incremental es minimo porque los clips finales (~2MB) son comparables e
 | GIF animado como formato output | Calidad inferior, archivos mas pesados que MP4 equivalente, sin audio. |
 | Permitir reemplazar el clip | Complejidad adicional en permisos y cleanup. Mismo patron attach-only que imagenes. |
 | meta.json como archivo separado | Dos uploads independientes crean race condition: si meta.json falla pero el raw sube, el onFinalize no tiene datos de recorte. customMetadata en el propio archivo es atomico. |
+| Escritura directa a Firestore (`updateDoc`) para `mediaStatus` | El proyecto enruta todas las escrituras por Cloud Functions via API. Introducir `updateDoc` en el frontend requeriria abrir `allow write` en Firestore rules, rompiendo la invariante de seguridad. El handler `updateStar` ya valida permisos, acceso al cielo y ownership — reusar ese endpoint es mas simple y seguro. |
 | Cloud Function setea `processing` | Gap de UX de 1-10+ segundos entre upload completado y onFinalize (cold start). El usuario ve la estrella vacia. Cliente seteando antes del upload da feedback inmediato. |
-| Permitir cancelar en `processing` | Race condition: cliente escribe null, Cloud Function termina y escribe ready, resucitando video cancelado. El procesamiento toma 5-15s, no justifica cancelacion. |
+| Cancelacion manual en `processing` | Race condition: si el usuario cancela despues de un upload exitoso, la Cloud Function puede escribir `ready` resucitando un video "cancelado". El rollback automatico (upload fallo) es seguro porque la CF no se disparo. Pero la UI no expone boton de cancelar para evitar el caso manual. |
+| Mezclar `mediaStatus` con otros campos en PATCH | Ambiguedad: si `{ title: 'x', mediaStatus: 'processing' }` falla la transicion, ¿se aplica el titulo? Separar garantiza atomicidad. El handler rechaza con 400 si `mediaStatus` viene acompanado de otros campos. |
 | `allow update` en temp/ Storage | Permitiria sobrescribir un raw que la Cloud Function esta procesando. La CF limpia temp/ en error, dejando la ruta libre para reintentos. |
 | Rutas unicas por intento (timestamp) | Complica el cron y la CF necesita resolver cual es el intento mas reciente. Innecesario si la CF limpia en error. |
 
@@ -621,7 +700,7 @@ El costo incremental es minimo porque los clips finales (~2MB) son comparables e
 | Video raw muy grande satura /tmp | Media | Medio | Validar tamano antes de descargar. /tmp en gen2 tiene hasta 10GB. |
 | Clip final excede 3MB | Baja | Bajo | Reintentar con CRF mas alto (max 35). Si aun excede, rechazar con error. |
 | Procesamiento toma mas de 5 min | Muy baja | Medio | Para 6s de video es improbable. Timeout a 5 min como safety net. |
-| Abuso (uploads masivos) | Media | Alto | Rate limit por usuario (5/hora). Max 10 instancias concurrentes de la function. |
+| Abuso (uploads masivos) | Media | Alto | Rate limit por usuario (5/dia). Max 10 instancias concurrentes de la function. |
 | Estrella zombi en `processing` | Media | Bajo | Rollback inmediato del cliente + cron cada 15 min como safety net. |
 | Upload falla despues del PATCH | Media | Bajo | try/catch con rollback a `mediaStatus: null`. Cron cubre caso de app cerrada. |
 | Cloud Function crashea sin escribir error | Muy baja | Medio | Cron detecta estrellas en `processing` > 15 min y las resetea. |

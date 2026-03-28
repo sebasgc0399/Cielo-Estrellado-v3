@@ -311,15 +311,31 @@ export async function deleteSky(req: Request, res: Response): Promise<void> {
       await batch.commit()
     }
 
-    // Clean up star images from Storage (batched, best-effort)
-    const IMAGE_DELETE_BATCH_SIZE = 10
-    const imagePaths: string[] = []
+    // Clean up media files from Storage (batched, best-effort)
+    const MEDIA_DELETE_BATCH_SIZE = 10
+    const mediaFilePaths: string[] = []
     for (const doc of starsSnap.docs) {
       const starData = doc.data()
-      if (starData.imagePath) imagePaths.push(starData.imagePath as string)
+      if (starData.mediaPath) mediaFilePaths.push(starData.mediaPath as string)
+      if (starData.thumbnailPath) mediaFilePaths.push(starData.thumbnailPath as string)
+      // Defensive: pre-migration docs may still have imagePath
+      if (starData.imagePath && !starData.mediaPath) {
+        mediaFilePaths.push(starData.imagePath as string)
+      }
     }
-    for (let i = 0; i < imagePaths.length; i += IMAGE_DELETE_BATCH_SIZE) {
-      const chunk = imagePaths.slice(i, i + IMAGE_DELETE_BATCH_SIZE)
+
+    // Clean up temp files for this sky
+    try {
+      const [tempFiles] = await storage.bucket().getFiles({ prefix: `temp/${skyId}/` })
+      for (const file of tempFiles) {
+        mediaFilePaths.push(file.name)
+      }
+    } catch {
+      console.warn(`Failed to list temp files for sky: ${skyId}`)
+    }
+
+    for (let i = 0; i < mediaFilePaths.length; i += MEDIA_DELETE_BATCH_SIZE) {
+      const chunk = mediaFilePaths.slice(i, i + MEDIA_DELETE_BATCH_SIZE)
       await Promise.allSettled(
         chunk.map(path =>
           storage.bucket().file(path).delete().then(() => {}).catch(() => {

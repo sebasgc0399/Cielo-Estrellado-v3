@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => {
   const subMembersGet = vi.fn()
   const storageDelete = vi.fn().mockResolvedValue(undefined)
   const storageFile = vi.fn().mockReturnValue({ delete: storageDelete })
+  const storageGetFiles = vi.fn().mockResolvedValue([[]])
   const batchDelete = vi.fn()
   const batchUpdate = vi.fn()
 
@@ -32,7 +33,7 @@ const mocks = vi.hoisted(() => {
   return {
     userGet, collectionGroupGet, inventoryGet, skyUpdate,
     membersQuery, batchSet, batchCommit,
-    getAll, starsGet, subMembersGet, storageDelete, storageFile,
+    getAll, starsGet, subMembersGet, storageDelete, storageFile, storageGetFiles,
     batchDelete, batchUpdate, invitesQuery,
   }
 })
@@ -88,6 +89,7 @@ vi.mock('../lib/firebaseAdmin.js', () => ({
   storage: {
     bucket: vi.fn().mockReturnValue({
       file: mocks.storageFile,
+      getFiles: mocks.storageGetFiles,
     }),
   },
 }))
@@ -123,6 +125,7 @@ beforeEach(() => {
   mocks.subMembersGet.mockResolvedValue({ docs: [] })
   mocks.getAll.mockResolvedValue([])
   mocks.storageDelete.mockResolvedValue(undefined)
+  mocks.storageGetFiles.mockResolvedValue([[]])
 })
 
 describe('createSky', () => {
@@ -375,8 +378,8 @@ describe('deleteSky', () => {
   it('elimina cielo con estrellas, miembros e invites pendientes', async () => {
     mocks.starsGet.mockResolvedValue({
       docs: [
-        { ref: { id: 'star-1' }, data: () => ({ imagePath: 'stars/sky-1/star-1/image' }) },
-        { ref: { id: 'star-2' }, data: () => ({ imagePath: null }) },
+        { ref: { id: 'star-1' }, data: () => ({ mediaPath: 'stars/sky-1/star-1/image', thumbnailPath: null }) },
+        { ref: { id: 'star-2' }, data: () => ({ mediaPath: null, thumbnailPath: null }) },
       ],
     })
     mocks.subMembersGet.mockResolvedValue({
@@ -404,7 +407,7 @@ describe('deleteSky', () => {
       { status: 'revoked' },
     )
     expect(mocks.batchCommit).toHaveBeenCalled()
-    // Storage cleanup: solo star con imagen
+    // Storage cleanup: solo star con mediaPath
     expect(mocks.storageFile).toHaveBeenCalledWith('stars/sky-1/star-1/image')
     expect(mocks.storageDelete).toHaveBeenCalledTimes(1)
   })
@@ -422,10 +425,32 @@ describe('deleteSky', () => {
     expect(mocks.batchDelete).not.toHaveBeenCalled()
   })
 
+  it('elimina mediaPath, thumbnailPath y archivos temp de todas las estrellas', async () => {
+    mocks.starsGet.mockResolvedValue({
+      docs: [
+        { ref: { id: 'star-1' }, data: () => ({ mediaPath: 'stars/sky-1/star-1/video', thumbnailPath: 'stars/sky-1/star-1/thumb' }) },
+        { ref: { id: 'star-2' }, data: () => ({ mediaPath: null, thumbnailPath: null }) },
+      ],
+    })
+    mocks.subMembersGet.mockResolvedValue({ docs: [] })
+    mocks.storageGetFiles.mockResolvedValue([[
+      { name: 'temp/sky-1/star-1/raw' },
+    ]])
+
+    const res = makeRes()
+    await deleteSky(makeReq({ routeParams: { skyId: 'sky-1' } }), res)
+
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(mocks.storageFile).toHaveBeenCalledWith('stars/sky-1/star-1/video')
+    expect(mocks.storageFile).toHaveBeenCalledWith('stars/sky-1/star-1/thumb')
+    expect(mocks.storageFile).toHaveBeenCalledWith('temp/sky-1/star-1/raw')
+    expect(mocks.storageDelete).toHaveBeenCalledTimes(3)
+  })
+
   it('completa aunque Storage cleanup falle', async () => {
     mocks.starsGet.mockResolvedValue({
       docs: [
-        { ref: { id: 'star-1' }, data: () => ({ imagePath: 'stars/sky-1/star-1/image' }) },
+        { ref: { id: 'star-1' }, data: () => ({ mediaPath: 'stars/sky-1/star-1/image', thumbnailPath: null }) },
       ],
     })
     mocks.subMembersGet.mockResolvedValue({ docs: [] })

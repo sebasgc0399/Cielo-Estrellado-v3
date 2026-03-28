@@ -47,6 +47,7 @@ service firebase.storage {
       // - tras PATCH exitoso: imagePath != null → bloqueado (replace fuera de scope)
       allow create, update: if request.auth != null
         && canAttach()
+        && firestore.get(starRef()).data.mediaPath == null
         && firestore.get(starRef()).data.imagePath == null
         && request.resource.size < 5 * 1024 * 1024
         && request.resource.contentType.matches('image/(jpeg|png|webp)');
@@ -75,10 +76,63 @@ service firebase.storage {
       allow write: if false;
     }
 
+    // Videos temporales (raw upload para procesamiento)
+    match /temp/{skyId}/{starId}/{fileName} {
+      function tempMemberRef() {
+        return /databases/(default)/documents/skies/$(skyId)/members/$(request.auth.uid);
+      }
+      function tempStarRef() {
+        return /databases/(default)/documents/skies/$(skyId)/stars/$(starId);
+      }
+
+      allow create: if request.auth != null
+        && firestore.get(tempMemberRef()).data != null
+        && firestore.get(tempMemberRef()).data.status == 'active'
+        && firestore.get(tempStarRef()).data != null
+        && firestore.get(tempStarRef()).data.deletedAt == null
+        && (firestore.get(tempMemberRef()).data.role == 'owner'
+          || (firestore.get(tempMemberRef()).data.role == 'editor'
+            && firestore.get(tempStarRef()).data.authorUserId == request.auth.uid))
+        && request.resource.size < 50 * 1024 * 1024
+        && request.resource.contentType.matches('video/(mp4|webm|quicktime)');
+      allow read, update, delete: if false;
+    }
+
+    // Clips de video finales (solo Cloud Function escribe via Admin SDK)
+    match /stars/{skyId}/{starId}/video {
+      function videoMemberRef() {
+        return /databases/(default)/documents/skies/$(skyId)/members/$(request.auth.uid);
+      }
+      function videoStarRef() {
+        return /databases/(default)/documents/skies/$(skyId)/stars/$(starId);
+      }
+
+      allow read: if request.auth != null
+        && firestore.get(videoMemberRef()).data != null
+        && firestore.get(videoMemberRef()).data.status == 'active'
+        && firestore.get(videoStarRef()).data != null
+        && firestore.get(videoStarRef()).data.deletedAt == null;
+      allow write: if false;
+    }
+
+    // Thumbnails de video (solo Cloud Function escribe via Admin SDK)
+    match /stars/{skyId}/{starId}/thumb {
+      function thumbMemberRef() {
+        return /databases/(default)/documents/skies/$(skyId)/members/$(request.auth.uid);
+      }
+      function thumbStarRef() {
+        return /databases/(default)/documents/skies/$(skyId)/stars/$(starId);
+      }
+
+      allow read: if request.auth != null
+        && firestore.get(thumbMemberRef()).data != null
+        && firestore.get(thumbMemberRef()).data.status == 'active'
+        && firestore.get(thumbStarRef()).data != null
+        && firestore.get(thumbStarRef()).data.deletedAt == null;
+      allow write: if false;
+    }
+
     // Catch-all deny — cualquier path no cubierto explicitamente queda bloqueado.
-    // Para agregar paths nuevos (ej. SPEC_v3: temp/{skyId}/{starId}/raw,
-    // stars/{skyId}/{starId}/video, stars/{skyId}/{starId}/thumb),
-    // insertar las reglas ANTES de este bloque.
     match /{allPaths=**} {
       allow read, write: if false;
     }

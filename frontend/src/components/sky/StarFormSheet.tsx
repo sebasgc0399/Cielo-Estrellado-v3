@@ -117,7 +117,7 @@ export function StarFormSheet({
           const patchUrl = `/api/skies/${skyId}/stars/${res.starId}`
           const patchOpts = {
             method: 'PATCH' as const,
-            body: JSON.stringify({ imagePath: uploadedPath, title: trimTitle }),
+            body: JSON.stringify({ mediaPath: uploadedPath, title: trimTitle }),
           }
 
           try {
@@ -152,9 +152,9 @@ export function StarFormSheet({
         else body.year = null
 
         // Upload image first if selected and star has no image yet
-        if (imageFile && !star.imagePath) {
+        if (imageFile && !star.mediaPath) {
           const path = await uploadStarImage(skyId, star.starId, imageFile)
-          body.imagePath = path
+          body.mediaPath = path
         }
 
         await api(`/api/skies/${skyId}/stars/${star.starId}`, {
@@ -280,7 +280,7 @@ export function StarFormSheet({
           )}
 
           {/* Image upload — edit mode only, no existing image */}
-          {(mode === 'create' || (mode === 'edit' && star && !star.imagePath)) && (
+          {(mode === 'create' || (mode === 'edit' && star && !star.mediaPath)) && (
             <div className="space-y-1.5">
               <Label
                 className="text-xs font-normal tracking-wide"

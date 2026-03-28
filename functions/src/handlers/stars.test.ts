@@ -228,13 +228,17 @@ describe('createStar rewards', () => {
   })
 })
 
-describe('updateStar — imagePath', () => {
+describe('updateStar — mediaPath', () => {
   const baseStar = {
     title: 'Existing Star',
     message: null,
     xNormalized: 0.5,
     yNormalized: 0.5,
-    imagePath: null,
+    mediaType: null,
+    mediaStatus: null,
+    mediaPath: null,
+    thumbnailPath: null,
+    mediaDuration: null,
     deletedAt: null,
     authorUserId: 'test-uid',
   }
@@ -251,59 +255,200 @@ describe('updateStar — imagePath', () => {
     return starRef
   }
 
-  it('acepta imagePath canonico cuando star.imagePath es null', async () => {
+  it('acepta mediaPath canonico cuando star.mediaPath es null', async () => {
     const starRef = setupStarRef()
     const res = makeRes()
-    await updateStar(makeUpdateReq({ imagePath: 'stars/sky-1/star-123/image' }), res)
+    await updateStar(makeUpdateReq({ mediaPath: 'stars/sky-1/star-123/image' }), res)
     expect(res.status).toHaveBeenCalledWith(200)
     expect(starRef.update).toHaveBeenCalledWith(
-      expect.objectContaining({ imagePath: 'stars/sky-1/star-123/image' }),
+      expect.objectContaining({ mediaPath: 'stars/sky-1/star-123/image', mediaType: 'image' }),
     )
   })
 
-  it('rechaza imagePath no canonico con 400', async () => {
+  it('rechaza mediaPath no canonico con 400', async () => {
     setupStarRef()
     const res = makeRes()
-    await updateStar(makeUpdateReq({ imagePath: 'stars/sky-1/OTHER-STAR/image' }), res)
+    await updateStar(makeUpdateReq({ mediaPath: 'stars/sky-1/OTHER-STAR/image' }), res)
     expect(res.status).toHaveBeenCalledWith(400)
   })
 
-  it('rechaza imagePath con path traversal con 400', async () => {
+  it('rechaza mediaPath con path traversal con 400', async () => {
     setupStarRef()
     const res = makeRes()
     await updateStar(
-      makeUpdateReq({ imagePath: 'stars/sky-1/star-123/../../../etc/passwd' }),
+      makeUpdateReq({ mediaPath: 'stars/sky-1/star-123/../../../etc/passwd' }),
       res,
     )
     expect(res.status).toHaveBeenCalledWith(400)
   })
 
-  it('retorna 409 si star ya tiene imagen', async () => {
-    setupStarRef({ imagePath: 'stars/sky-1/star-123/image' })
+  it('retorna 409 si star ya tiene media', async () => {
+    setupStarRef({
+      mediaType: 'image',
+      mediaStatus: null,
+      mediaPath: 'stars/sky-1/star-123/image',
+      thumbnailPath: null,
+      mediaDuration: null,
+    })
     const res = makeRes()
-    await updateStar(makeUpdateReq({ imagePath: 'stars/sky-1/star-123/image' }), res)
+    await updateStar(makeUpdateReq({ mediaPath: 'stars/sky-1/star-123/image' }), res)
     expect(res.status).toHaveBeenCalledWith(409)
   })
 
-  it('permite setear imagePath a null', async () => {
-    const starRef = setupStarRef({ imagePath: 'stars/sky-1/star-123/image' })
+  it('permite setear mediaPath a null y limpia campos media', async () => {
+    const starRef = setupStarRef({
+      mediaType: 'image',
+      mediaStatus: null,
+      mediaPath: 'stars/sky-1/star-123/image',
+      thumbnailPath: null,
+      mediaDuration: null,
+    })
     const res = makeRes()
-    await updateStar(makeUpdateReq({ imagePath: null }), res)
+    await updateStar(makeUpdateReq({ mediaPath: null }), res)
     expect(res.status).toHaveBeenCalledWith(200)
     expect(starRef.update).toHaveBeenCalledWith(
-      expect.objectContaining({ imagePath: null }),
+      expect.objectContaining({
+        mediaPath: null,
+        mediaType: null,
+        mediaStatus: null,
+        thumbnailPath: null,
+        mediaDuration: null,
+      }),
     )
   })
 
-  it('rechaza imagePath con tipo invalido con 400', async () => {
+  it('rechaza mediaPath con tipo invalido con 400', async () => {
     setupStarRef()
     const res = makeRes()
-    await updateStar(makeUpdateReq({ imagePath: 12345 }), res)
+    await updateStar(makeUpdateReq({ mediaPath: 12345 }), res)
     expect(res.status).toHaveBeenCalledWith(400)
   })
 })
 
-describe('deleteStar — image cleanup', () => {
+describe('updateStar — mediaStatus transitions', () => {
+  const baseStar = {
+    title: 'Existing Star',
+    message: null,
+    xNormalized: 0.5,
+    yNormalized: 0.5,
+    mediaType: null,
+    mediaStatus: null,
+    mediaPath: null,
+    thumbnailPath: null,
+    mediaDuration: null,
+    deletedAt: null,
+    authorUserId: 'test-uid',
+  }
+
+  function setupStarRef(overrides: Record<string, unknown> = {}) {
+    const starRef = {
+      get: vi.fn().mockResolvedValue({
+        exists: true,
+        data: () => ({ ...baseStar, ...overrides }),
+      }),
+      update: vi.fn().mockResolvedValue(undefined),
+    }
+    mocks.starsChain.doc.mockReturnValue(starRef)
+    return starRef
+  }
+
+  function makeMediaStatusReq(mediaStatus: unknown) {
+    return {
+      headers: { authorization: 'Bearer test-token' },
+      routeParams: { skyId: 'sky-1', starId: 'star-123' },
+      body: { mediaStatus },
+      query: {},
+    } as unknown as Request
+  }
+
+  it('permite transicion null → processing', async () => {
+    const starRef = setupStarRef({ mediaStatus: null })
+    const res = makeRes()
+    await updateStar(makeMediaStatusReq('processing'), res)
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(starRef.update).toHaveBeenCalledWith({
+      mediaStatus: 'processing',
+      updatedAt: expect.any(String),
+      updatedByUserId: 'test-uid',
+    })
+  })
+
+  it('permite transicion processing → null (rollback)', async () => {
+    const starRef = setupStarRef({ mediaStatus: 'processing' })
+    const res = makeRes()
+    await updateStar(makeMediaStatusReq(null), res)
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(starRef.update).toHaveBeenCalledWith({
+      mediaStatus: null,
+      updatedAt: expect.any(String),
+      updatedByUserId: 'test-uid',
+    })
+  })
+
+  it('permite transicion error → null (retry)', async () => {
+    const starRef = setupStarRef({ mediaStatus: 'error' })
+    const res = makeRes()
+    await updateStar(makeMediaStatusReq(null), res)
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(starRef.update).toHaveBeenCalledWith({
+      mediaStatus: null,
+      updatedAt: expect.any(String),
+      updatedByUserId: 'test-uid',
+    })
+  })
+
+  it('rechaza transicion null → ready (cliente no puede)', async () => {
+    setupStarRef({ mediaStatus: null })
+    const res = makeRes()
+    await updateStar(makeMediaStatusReq('ready'), res)
+    expect(res.status).toHaveBeenCalledWith(400)
+  })
+
+  it('rechaza transicion null → error (cliente no puede)', async () => {
+    setupStarRef({ mediaStatus: null })
+    const res = makeRes()
+    await updateStar(makeMediaStatusReq('error'), res)
+    expect(res.status).toHaveBeenCalledWith(400)
+  })
+
+  it('rechaza transicion processing → ready', async () => {
+    setupStarRef({ mediaStatus: 'processing' })
+    const res = makeRes()
+    await updateStar(makeMediaStatusReq('ready'), res)
+    expect(res.status).toHaveBeenCalledWith(400)
+  })
+
+  it('rechaza transicion ready → processing', async () => {
+    setupStarRef({ mediaStatus: 'ready' })
+    const res = makeRes()
+    await updateStar(makeMediaStatusReq('processing'), res)
+    expect(res.status).toHaveBeenCalledWith(400)
+  })
+
+  it('rechaza mediaStatus con otros campos (400)', async () => {
+    setupStarRef({ mediaStatus: null })
+    const res = makeRes()
+    const req = {
+      headers: { authorization: 'Bearer test-token' },
+      routeParams: { skyId: 'sky-1', starId: 'star-123' },
+      body: { mediaStatus: 'processing', title: 'foo' },
+      query: {},
+    } as unknown as Request
+    await updateStar(req, res)
+    expect(res.status).toHaveBeenCalledWith(400)
+    expect(res.json).toHaveBeenCalledWith({ error: 'mediaStatus debe enviarse solo, sin otros campos' })
+  })
+
+  it('mediaStatus solo, sin title, retorna 200', async () => {
+    const starRef = setupStarRef({ mediaStatus: null })
+    const res = makeRes()
+    await updateStar(makeMediaStatusReq('processing'), res)
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(starRef.update).toHaveBeenCalled()
+  })
+})
+
+describe('deleteStar — media cleanup', () => {
   function setupStarRef(overrides: Record<string, unknown> = {}) {
     const starRef = {
       get: vi.fn().mockResolvedValue({
@@ -311,7 +456,11 @@ describe('deleteStar — image cleanup', () => {
         data: () => ({
           deletedAt: null,
           authorUserId: 'test-uid',
-          imagePath: null,
+          mediaType: null,
+          mediaStatus: null,
+          mediaPath: null,
+          thumbnailPath: null,
+          mediaDuration: null,
           ...overrides,
         }),
       }),
@@ -321,32 +470,64 @@ describe('deleteStar — image cleanup', () => {
     return starRef
   }
 
-  it('elimina imagen de Storage al eliminar estrella con imagen', async () => {
-    setupStarRef({ imagePath: 'stars/sky-1/star-123/image' })
+  it('elimina media y temp de Storage al eliminar estrella con imagen', async () => {
+    setupStarRef({
+      mediaType: 'image',
+      mediaStatus: null,
+      mediaPath: 'stars/sky-1/star-123/image',
+      thumbnailPath: null,
+      mediaDuration: null,
+    })
     const res = makeRes()
     await deleteStar(makeDeleteReq(), res)
     expect(res.status).toHaveBeenCalledWith(200)
     expect(mocks.storageFile).toHaveBeenCalledWith('stars/sky-1/star-123/image')
+    expect(mocks.storageFile).toHaveBeenCalledWith('temp/sky-1/star-123/raw')
     expect(mocks.storageDelete).toHaveBeenCalled()
   })
 
-  it('no intenta eliminar Storage si star no tiene imagen', async () => {
-    setupStarRef({ imagePath: null })
+  it('solo intenta eliminar temp si star no tiene media', async () => {
+    setupStarRef()
     const res = makeRes()
     await deleteStar(makeDeleteReq(), res)
     expect(res.status).toHaveBeenCalledWith(200)
-    expect(mocks.storageFile).not.toHaveBeenCalled()
+    // temp/sky-1/star-123/raw siempre se intenta borrar
+    expect(mocks.storageFile).toHaveBeenCalledTimes(1)
+    expect(mocks.storageFile).toHaveBeenCalledWith('temp/sky-1/star-123/raw')
   })
 
   it('completa soft-delete aun si Storage delete falla', async () => {
-    mocks.storageDelete.mockRejectedValueOnce(new Error('Storage error'))
-    const starRef = setupStarRef({ imagePath: 'stars/sky-1/star-123/image' })
+    mocks.storageDelete.mockRejectedValue(new Error('Storage error'))
+    const starRef = setupStarRef({
+      mediaType: 'image',
+      mediaStatus: null,
+      mediaPath: 'stars/sky-1/star-123/image',
+      thumbnailPath: null,
+      mediaDuration: null,
+    })
     const res = makeRes()
     await deleteStar(makeDeleteReq(), res)
     expect(res.status).toHaveBeenCalledWith(200)
     expect(starRef.update).toHaveBeenCalledWith(
       expect.objectContaining({ deletedAt: expect.any(String) }),
     )
+  })
+
+  it('borra video, thumbnail y temp cuando star tiene video', async () => {
+    setupStarRef({
+      mediaType: 'video',
+      mediaStatus: 'ready',
+      mediaPath: 'stars/sky-1/star-123/video',
+      thumbnailPath: 'stars/sky-1/star-123/thumb',
+      mediaDuration: 4.5,
+    })
+    const res = makeRes()
+    await deleteStar(makeDeleteReq(), res)
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(mocks.storageFile).toHaveBeenCalledWith('stars/sky-1/star-123/video')
+    expect(mocks.storageFile).toHaveBeenCalledWith('stars/sky-1/star-123/thumb')
+    expect(mocks.storageFile).toHaveBeenCalledWith('temp/sky-1/star-123/raw')
+    expect(mocks.storageDelete).toHaveBeenCalledTimes(3)
   })
 })
 
@@ -395,7 +576,11 @@ describe('updateStar — permisos', () => {
     message: null,
     xNormalized: 0.5,
     yNormalized: 0.5,
-    imagePath: null,
+    mediaType: null,
+    mediaStatus: null,
+    mediaPath: null,
+    thumbnailPath: null,
+    mediaDuration: null,
     deletedAt: null,
     authorUserId: 'test-uid',
   }
@@ -470,7 +655,11 @@ describe('deleteStar — permisos', () => {
         data: () => ({
           deletedAt: null,
           authorUserId: 'test-uid',
-          imagePath: null,
+          mediaType: null,
+          mediaStatus: null,
+          mediaPath: null,
+          thumbnailPath: null,
+          mediaDuration: null,
           ...overrides,
         }),
       }),
