@@ -4,6 +4,7 @@ import { authenticateRequest } from '../middleware/auth.js'
 import { auth, db } from '../lib/firebaseAdmin.js'
 import type { UserRecord, TransactionRecord } from '../domain/contracts.js'
 import { WELCOME_BONUS } from '../domain/economyRules.js'
+import { logError } from '../logError.js'
 
 export async function userSync(req: Request, res: Response): Promise<void> {
   try {
@@ -75,7 +76,7 @@ export async function userSync(req: Request, res: Response): Promise<void> {
 
     res.status(200).json({ status: 'ok' })
   } catch (error) {
-    console.error('User sync failed:', error)
+    logError('User sync failed', error)
     res.status(500).json({ error: 'Error interno al sincronizar usuario' })
   }
 }

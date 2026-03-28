@@ -7,6 +7,7 @@ import { STAR_TITLE_MAX_LENGTH, STAR_MESSAGE_MAX_LENGTH } from '../domain/polici
 import type { StarRecord, TransactionRecord } from '../domain/contracts.js'
 import { STAR_CREATION_REWARD, FIRST_STAR_BONUS, MAX_STARS_REWARD_PER_DAY } from '../domain/economyRules.js'
 import { DEFAULT_USER_ECONOMY } from '../domain/defaults.js'
+import { logError } from '../logError.js'
 
 function validateCoordinates(body: {
   xNormalized?: unknown
@@ -192,12 +193,12 @@ export async function createStar(req: Request, res: Response): Promise<void> {
         stardustEarned = rewardResult.totalReward
       }
     } catch (rewardError) {
-      console.error('Star creation reward failed (non-blocking):', rewardError)
+      logError('Star creation reward failed (non-blocking)', rewardError)
     }
 
     res.status(201).json({ starId: starRef.id, rewards: { stardustEarned } })
   } catch (error) {
-    console.error('Star creation failed:', error)
+    logError('Star creation failed', error)
     res.status(500).json({ error: 'Error interno al crear la estrella' })
   }
 }
@@ -356,7 +357,7 @@ export async function updateStar(req: Request, res: Response): Promise<void> {
 
     res.status(200).json({ ok: true })
   } catch (error) {
-    console.error('Star update failed:', error)
+    logError('Star update failed', error)
     res.status(500).json({ error: 'Error interno al actualizar la estrella' })
   }
 }
@@ -415,7 +416,7 @@ export async function deleteStar(req: Request, res: Response): Promise<void> {
 
     res.status(200).json({ ok: true })
   } catch (error) {
-    console.error('Star delete failed:', error)
+    logError('Star delete failed', error)
     res.status(500).json({ error: 'Error interno al eliminar la estrella' })
   }
 }

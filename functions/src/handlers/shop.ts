@@ -6,6 +6,7 @@ import type { QueryDocumentSnapshot, Transaction } from '@google-cloud/firestore
 import type { TransactionRecord, InventoryItem } from '../domain/contracts.js'
 import { getShopItem, SHOP_CATALOG } from '../domain/shopCatalog.js'
 import { DEFAULT_USER_ECONOMY } from '../domain/defaults.js'
+import { logError } from '../logError.js'
 
 class ShopError extends Error {
   constructor(public code: string, message: string) {
@@ -95,7 +96,7 @@ export async function purchase(req: Request, res: Response): Promise<void> {
       res.status(status).json({ error: error.message, code: error.code })
       return
     }
-    console.error('purchase failed:', error)
+    logError('purchase failed', error)
     res.status(500).json({ error: 'Error interno al procesar compra' })
   }
 }
@@ -118,7 +119,7 @@ export async function getCatalog(req: Request, res: Response): Promise<void> {
 
     res.status(200).json({ catalog })
   } catch (error) {
-    console.error('getCatalog failed:', error)
+    logError('getCatalog failed', error)
     res.status(500).json({ error: 'Error interno al obtener catálogo' })
   }
 }

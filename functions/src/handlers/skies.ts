@@ -9,6 +9,7 @@ import type { DocumentReference, QueryDocumentSnapshot } from '@google-cloud/fir
 import type { SkyRecord, MemberRecord, MemberRole, SkyPersonalization, SkyDensity, InventoryItem } from '../domain/contracts.js'
 import { DEFAULT_SKY_PERSONALIZATION } from '../domain/contracts.js'
 import { DEFAULT_USER_ECONOMY } from '../domain/defaults.js'
+import { logError } from '../logError.js'
 
 const VALID_DENSITIES: SkyDensity[] = ['low', 'medium', 'high']
 const PERSONALIZATION_KEYS = ['density', 'nebulaEnabled', 'twinkleEnabled', 'shootingStarsEnabled'] as const
@@ -61,7 +62,7 @@ export async function getUserSkies(req: Request, res: Response): Promise<void> {
 
     res.status(200).json({ skies })
   } catch (error) {
-    console.error('getUserSkies failed:', error)
+    logError('getUserSkies failed', error)
     res.status(500).json({ error: 'Error interno al listar cielos' })
   }
 }
@@ -140,7 +141,7 @@ export async function createSky(req: Request, res: Response): Promise<void> {
 
     res.status(201).json({ skyId: skyRef.id })
   } catch (error) {
-    console.error('Sky creation failed:', error)
+    logError('Sky creation failed', error)
     res.status(500).json({ error: 'Error interno al crear el cielo' })
   }
 }
@@ -220,7 +221,7 @@ export async function updateSky(req: Request, res: Response): Promise<void> {
 
     res.status(200).json({ ok: true })
   } catch (error) {
-    console.error('updateSky failed:', error)
+    logError('updateSky failed', error)
     res.status(500).json({ error: 'Error interno al actualizar el cielo' })
   }
 }
@@ -247,7 +248,7 @@ export async function getSky(req: Request, res: Response): Promise<void> {
       member: { role: access.member.role, status: access.member.status },
     })
   } catch (error) {
-    console.error('getSky failed:', error)
+    logError('getSky failed', error)
     res.status(500).json({ error: 'Error interno al obtener el cielo' })
   }
 }
@@ -328,7 +329,7 @@ export async function deleteSky(req: Request, res: Response): Promise<void> {
 
     res.status(200).json({ ok: true })
   } catch (error) {
-    console.error('deleteSky failed:', error)
+    logError('deleteSky failed', error)
     res.status(500).json({ error: 'Error interno al eliminar el cielo' })
   }
 }
@@ -382,7 +383,7 @@ export async function updateSkyTheme(req: Request, res: Response): Promise<void>
 
     res.status(200).json({ themeId })
   } catch (error) {
-    console.error('updateSkyTheme failed:', error)
+    logError('updateSkyTheme failed', error)
     res.status(500).json({ error: 'Error interno al cambiar el tema' })
   }
 }

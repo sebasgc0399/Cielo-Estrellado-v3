@@ -5,6 +5,7 @@ import { db } from '../lib/firebaseAdmin.js'
 import { createInvite } from '../lib/createInvite.js'
 import { revokeInvite, RevokeError } from '../lib/revokeInvite.js'
 import type { MemberRecord, InviteRecord, InviteRole, IsoDateString } from '../domain/contracts.js'
+import { logError } from '../logError.js'
 
 async function requireOwner(skyId: string, uid: string): Promise<MemberRecord | null> {
   const memberDoc = await db
@@ -33,7 +34,8 @@ export async function createInviteHandler(req: Request, res: Response): Promise<
 
     const appUrl = process.env.APP_URL?.trim()
     if (!appUrl) {
-      res.status(500).json({ error: 'APP_URL no configurado' })
+      console.error('APP_URL not configured')
+      res.status(500).json({ error: 'Error de configuración del servidor' })
       return
     }
 
@@ -49,7 +51,7 @@ export async function createInviteHandler(req: Request, res: Response): Promise<
 
     res.status(201).json({ inviteUrl })
   } catch (error) {
-    console.error('Invite creation failed:', error)
+    logError('Invite creation failed', error)
     res.status(500).json({ error: 'Error interno al crear la invitación' })
   }
 }
@@ -92,7 +94,7 @@ export async function listInvites(req: Request, res: Response): Promise<void> {
 
     res.status(200).json({ invites })
   } catch (error) {
-    console.error('Invite list failed:', error)
+    logError('Invite list failed', error)
     res.status(500).json({ error: 'Error interno al listar invitaciones' })
   }
 }
@@ -143,7 +145,7 @@ export async function revokeInviteHandler(req: Request, res: Response): Promise<
         return
       }
     }
-    console.error('Revoke invite failed:', error)
+    logError('Revoke invite failed', error)
     res.status(500).json({ error: 'Error interno al revocar la invitación' })
   }
 }

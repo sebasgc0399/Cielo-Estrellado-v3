@@ -11,6 +11,7 @@ import {
   WEEKLY_BONUS,
 } from '../domain/economyRules.js'
 import { DEFAULT_USER_ECONOMY } from '../domain/defaults.js'
+import { logError } from '../logError.js'
 
 function getISOWeek(date: Date): string {
   const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
@@ -170,7 +171,7 @@ export async function getEconomy(req: Request, res: Response): Promise<void> {
       rewards: result.rewards,
     })
   } catch (error) {
-    console.error('getEconomy failed:', error)
+    logError('getEconomy failed', error)
     res.status(500).json({ error: 'Error interno al obtener economía' })
   }
 }
@@ -218,7 +219,7 @@ export async function getTransactions(req: Request, res: Response): Promise<void
 
     res.status(200).json({ transactions, nextCursor })
   } catch (error) {
-    console.error('getTransactions failed:', error)
+    logError('getTransactions failed', error)
     res.status(500).json({ error: 'Error interno al obtener transacciones' })
   }
 }

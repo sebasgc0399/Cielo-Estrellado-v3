@@ -4,6 +4,7 @@ import { authenticateRequest } from '../middleware/auth.js'
 import { db } from '../lib/firebaseAdmin.js'
 import type { QueryDocumentSnapshot } from '@google-cloud/firestore'
 import type { MemberRecord, MemberRole, UserRecord, IsoDateString } from '../domain/contracts.js'
+import { logError } from '../logError.js'
 
 export async function listMembers(req: Request, res: Response): Promise<void> {
   try {
@@ -70,7 +71,7 @@ export async function listMembers(req: Request, res: Response): Promise<void> {
 
     res.status(200).json({ members })
   } catch (error) {
-    console.error('Members list failed:', error)
+    logError('Members list failed', error)
     res.status(500).json({ error: 'Error interno al listar miembros' })
   }
 }
@@ -151,7 +152,7 @@ export async function updateMember(req: Request, res: Response): Promise<void> {
 
     res.status(200).json({ ok: true })
   } catch (error) {
-    console.error('Update member failed:', error)
+    logError('Update member failed', error)
     res.status(500).json({ error: 'Error interno al actualizar miembro' })
   }
 }
@@ -192,7 +193,7 @@ export async function leaveSky(req: Request, res: Response): Promise<void> {
       res.status(statusCode).json({ error: (error as Error).message })
       return
     }
-    console.error('Leave sky failed:', error)
+    logError('Leave sky failed', error)
     res.status(500).json({ error: 'Error interno al abandonar el cielo' })
   }
 }

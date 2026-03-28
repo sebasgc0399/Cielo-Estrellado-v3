@@ -27,6 +27,12 @@
   - Tipos/interfaces: `PascalCase`, sin prefijo `I`
   - Constantes: `UPPER_SNAKE_CASE`
 - **No crear archivos fuera del scope.** Cada archivo nuevo debe justificarse con un uso inmediato. No crear "por si acaso".
+- **Formato de respuesta de error en handlers:**
+  - Error generico: `{ error: 'Mensaje descriptivo para el usuario' }`
+  - Error de negocio con codigo: `{ error: 'Mensaje', code: 'error_code' }`
+  - Error con datos contextuales: `{ error: 'Mensaje', ...campos_relevantes }`
+  - Webhook Wompi: `{ message: '...' }` (convencion de Wompi, no cambiar)
+  - No mezclar `error` y `message` como clave principal en el mismo tipo de endpoint.
 
 ## Regla de complejidad
 

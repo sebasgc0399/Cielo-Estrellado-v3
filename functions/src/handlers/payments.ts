@@ -5,6 +5,7 @@ import { db } from '../lib/firebaseAdmin.js'
 import { createHash, randomBytes } from 'node:crypto'
 import type { PaymentRecord, TransactionRecord } from '../domain/contracts.js'
 import { getStardustPackage } from '../domain/stardustPackages.js'
+import { logError } from '../logError.js'
 
 const MAX_CONCURRENT_PENDING_PAYMENTS = 5
 
@@ -35,14 +36,14 @@ export async function createPayment(req: Request, res: Response): Promise<void> 
     const integritySecret = process.env.WOMPI_INTEGRITY_SECRET
     if (!integritySecret) {
       console.error('WOMPI_INTEGRITY_SECRET not configured')
-      res.status(500).json({ error: 'Error de configuración de pagos' })
+      res.status(500).json({ error: 'Error interno al crear pago' })
       return
     }
 
     const publicKey = process.env.WOMPI_PUBLIC_KEY
     if (!publicKey) {
       console.error('WOMPI_PUBLIC_KEY not configured')
-      res.status(500).json({ error: 'Error de configuración de pagos' })
+      res.status(500).json({ error: 'Error interno al crear pago' })
       return
     }
 
@@ -94,7 +95,7 @@ export async function createPayment(req: Request, res: Response): Promise<void> 
       res.status(400).json({ error: error.message, code: error.code })
       return
     }
-    console.error('createPayment failed:', error)
+    logError('createPayment failed', error)
     res.status(500).json({ error: 'Error interno al crear pago' })
   }
 }
@@ -272,7 +273,7 @@ export async function wompiWebhook(req: Request, res: Response): Promise<void> {
     res.status(200).json({ message: 'OK' })
   } catch (error) {
     // Always return 200 to Wompi to prevent retries on our errors
-    console.error('wompiWebhook error:', error)
+    logError('wompiWebhook error', error)
     res.status(200).json({ message: 'Internal error, logged' })
   }
 }
@@ -305,7 +306,7 @@ export async function getPaymentStatus(req: Request, res: Response): Promise<voi
       stardustAmount: payment.stardustAmount,
     })
   } catch (error) {
-    console.error('getPaymentStatus failed:', error)
+    logError('getPaymentStatus failed', error)
     res.status(500).json({ error: 'Error interno al consultar estado de pago' })
   }
 }

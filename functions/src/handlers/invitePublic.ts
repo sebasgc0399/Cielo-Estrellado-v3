@@ -8,6 +8,7 @@ import { acceptInvite, InviteError } from '../lib/acceptInvite.js'
 import type { InviteRecord, SkyRecord, TransactionRecord } from '../domain/contracts.js'
 import { INVITE_ACCEPTED_REWARD, MAX_INVITE_REWARDS_PER_DAY } from '../domain/economyRules.js'
 import { DEFAULT_USER_ECONOMY } from '../domain/defaults.js'
+import { logError } from '../logError.js'
 
 export async function previewInvite(req: Request, res: Response): Promise<void> {
   try {
@@ -130,7 +131,7 @@ export async function acceptInviteHandler(req: Request, res: Response): Promise<
         stardustEarned = rewardResult.reward
       }
     } catch (rewardError) {
-      console.error('Invite accept reward failed (non-blocking):', rewardError)
+      logError('Invite accept reward failed (non-blocking)', rewardError)
     }
 
     res.status(200).json({ skyId, rewards: { stardustEarned } })
@@ -158,7 +159,7 @@ export async function acceptInviteHandler(req: Request, res: Response): Promise<
           return
       }
     }
-    console.error('Accept invite failed:', error)
+    logError('Accept invite failed', error)
     res.status(500).json({ error: 'Error interno al aceptar la invitación' })
   }
 }
