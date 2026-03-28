@@ -42,37 +42,6 @@ export async function userSync(req: Request, res: Response): Promise<void> {
         emailVerifiedAt,
         lastLoginAt: now,
       })
-
-      await db.runTransaction(async (transaction) => {
-        const freshSnap = await transaction.get(userRef)
-        if (!freshSnap.exists) return
-        const freshData = freshSnap.data()!
-
-        if (freshData.stardust === undefined) {
-          const ownerSnap = await db
-            .collectionGroup('members')
-            .where('userId', '==', decoded.uid)
-            .where('role', '==', 'owner')
-            .where('status', '==', 'active')
-            .get()
-
-          transaction.update(userRef, {
-            stardust: WELCOME_BONUS,
-            maxSkies: Math.max(2, ownerSnap.size),
-            maxMemberships: 20,
-            lastDailyRewardDate: null,
-            loginStreak: 0,
-            previousStreak: 0,
-            createdStarsToday: 0,
-            lastStarCreationDate: null,
-            weeklyBonusWeek: null,
-            acceptedInvitesToday: 0,
-            lastInviteAcceptDate: null,
-            status: 'active',
-          })
-          transaction.create(userRef.collection('transactions').doc(), welcomeTx)
-        }
-      })
     } else {
       const newUser: UserRecord = {
         displayName: firebaseUser.displayName || null,
