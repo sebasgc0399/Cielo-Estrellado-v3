@@ -298,19 +298,6 @@ export async function deleteSky(req: Request, res: Response): Promise<void> {
     // Delete the sky doc itself last
     allOps.push({ type: 'delete', ref: skyRef })
 
-    // Clean up star images from Storage
-    const imageDeletePromises: Promise<void>[] = []
-    for (const doc of starsSnap.docs) {
-      const starData = doc.data()
-      if (starData.imagePath) {
-        imageDeletePromises.push(
-          storage.bucket().file(starData.imagePath).delete().then(() => {}).catch(() => {
-            console.warn(`Failed to delete storage file: ${starData.imagePath}`)
-          })
-        )
-      }
-    }
-
     for (let i = 0; i < allOps.length; i += BATCH_LIMIT) {
       const batch = db.batch()
       const chunk = allOps.slice(i, i + BATCH_LIMIT)
@@ -324,8 +311,23 @@ export async function deleteSky(req: Request, res: Response): Promise<void> {
       await batch.commit()
     }
 
-    // Await storage cleanup (best-effort, don't block response)
-    await Promise.allSettled(imageDeletePromises)
+    // Clean up star images from Storage (batched, best-effort)
+    const IMAGE_DELETE_BATCH_SIZE = 10
+    const imagePaths: string[] = []
+    for (const doc of starsSnap.docs) {
+      const starData = doc.data()
+      if (starData.imagePath) imagePaths.push(starData.imagePath as string)
+    }
+    for (let i = 0; i < imagePaths.length; i += IMAGE_DELETE_BATCH_SIZE) {
+      const chunk = imagePaths.slice(i, i + IMAGE_DELETE_BATCH_SIZE)
+      await Promise.allSettled(
+        chunk.map(path =>
+          storage.bucket().file(path).delete().then(() => {}).catch(() => {
+            console.warn(`Failed to delete storage file: ${path}`)
+          })
+        )
+      )
+    }
 
     res.status(200).json({ ok: true })
   } catch (error) {

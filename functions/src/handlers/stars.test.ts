@@ -28,7 +28,10 @@ const mocks = vi.hoisted(() => {
 
   const runTransaction = vi.fn(async (fn: Function) => fn(transaction))
 
-  return { transaction, txAdd, txDocRef, starSet, starsChain, userRef, runTransaction }
+  const storageDelete = vi.fn().mockResolvedValue(undefined)
+  const storageFile = vi.fn().mockReturnValue({ delete: storageDelete })
+
+  return { transaction, txAdd, txDocRef, starSet, starsChain, userRef, runTransaction, storageFile, storageDelete }
 })
 
 vi.mock('../middleware/auth.js', () => ({
@@ -54,9 +57,14 @@ vi.mock('../lib/firebaseAdmin.js', () => ({
     }),
     runTransaction: mocks.runTransaction,
   },
+  storage: {
+    bucket: vi.fn().mockReturnValue({
+      file: mocks.storageFile,
+    }),
+  },
 }))
 
-import { createStar } from './stars'
+import { createStar, updateStar, deleteStar } from './stars'
 
 function makeReq() {
   return {
@@ -91,9 +99,29 @@ beforeEach(() => {
     if (name === 'transactions') return { add: mocks.txAdd, doc: vi.fn().mockReturnValue(mocks.txDocRef) }
     return {}
   })
+  mocks.storageFile.mockClear()
+  mocks.storageDelete.mockResolvedValue(undefined)
 })
 
 afterEach(() => { vi.useRealTimers() })
+
+function makeUpdateReq(body: Record<string, unknown> = {}) {
+  return {
+    headers: { authorization: 'Bearer test-token' },
+    routeParams: { skyId: 'sky-1', starId: 'star-123' },
+    body: { title: 'Updated Star', ...body },
+    query: {},
+  } as unknown as Request
+}
+
+function makeDeleteReq() {
+  return {
+    headers: { authorization: 'Bearer test-token' },
+    routeParams: { skyId: 'sky-1', starId: 'star-123' },
+    body: {},
+    query: {},
+  } as unknown as Request
+}
 
 describe('createStar rewards', () => {
   it('otorga STAR_CREATION_REWARD al crear estrella', async () => {
@@ -195,6 +223,128 @@ describe('createStar rewards', () => {
     expect(mocks.starSet).toHaveBeenCalled()
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({ starId: 'star-123', rewards: { stardustEarned: 0 } }),
+    )
+  })
+})
+
+describe('updateStar — imagePath', () => {
+  const baseStar = {
+    title: 'Existing Star',
+    message: null,
+    xNormalized: 0.5,
+    yNormalized: 0.5,
+    imagePath: null,
+    deletedAt: null,
+    authorUserId: 'test-uid',
+  }
+
+  function setupStarRef(overrides: Record<string, unknown> = {}) {
+    const starRef = {
+      get: vi.fn().mockResolvedValue({
+        exists: true,
+        data: () => ({ ...baseStar, ...overrides }),
+      }),
+      update: vi.fn().mockResolvedValue(undefined),
+    }
+    mocks.starsChain.doc.mockReturnValue(starRef)
+    return starRef
+  }
+
+  it('acepta imagePath canonico cuando star.imagePath es null', async () => {
+    const starRef = setupStarRef()
+    const res = makeRes()
+    await updateStar(makeUpdateReq({ imagePath: 'stars/sky-1/star-123/image' }), res)
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(starRef.update).toHaveBeenCalledWith(
+      expect.objectContaining({ imagePath: 'stars/sky-1/star-123/image' }),
+    )
+  })
+
+  it('rechaza imagePath no canonico con 400', async () => {
+    setupStarRef()
+    const res = makeRes()
+    await updateStar(makeUpdateReq({ imagePath: 'stars/sky-1/OTHER-STAR/image' }), res)
+    expect(res.status).toHaveBeenCalledWith(400)
+  })
+
+  it('rechaza imagePath con path traversal con 400', async () => {
+    setupStarRef()
+    const res = makeRes()
+    await updateStar(
+      makeUpdateReq({ imagePath: 'stars/sky-1/star-123/../../../etc/passwd' }),
+      res,
+    )
+    expect(res.status).toHaveBeenCalledWith(400)
+  })
+
+  it('retorna 409 si star ya tiene imagen', async () => {
+    setupStarRef({ imagePath: 'stars/sky-1/star-123/image' })
+    const res = makeRes()
+    await updateStar(makeUpdateReq({ imagePath: 'stars/sky-1/star-123/image' }), res)
+    expect(res.status).toHaveBeenCalledWith(409)
+  })
+
+  it('permite setear imagePath a null', async () => {
+    const starRef = setupStarRef({ imagePath: 'stars/sky-1/star-123/image' })
+    const res = makeRes()
+    await updateStar(makeUpdateReq({ imagePath: null }), res)
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(starRef.update).toHaveBeenCalledWith(
+      expect.objectContaining({ imagePath: null }),
+    )
+  })
+
+  it('rechaza imagePath con tipo invalido con 400', async () => {
+    setupStarRef()
+    const res = makeRes()
+    await updateStar(makeUpdateReq({ imagePath: 12345 }), res)
+    expect(res.status).toHaveBeenCalledWith(400)
+  })
+})
+
+describe('deleteStar — image cleanup', () => {
+  function setupStarRef(overrides: Record<string, unknown> = {}) {
+    const starRef = {
+      get: vi.fn().mockResolvedValue({
+        exists: true,
+        data: () => ({
+          deletedAt: null,
+          authorUserId: 'test-uid',
+          imagePath: null,
+          ...overrides,
+        }),
+      }),
+      update: vi.fn().mockResolvedValue(undefined),
+    }
+    mocks.starsChain.doc.mockReturnValue(starRef)
+    return starRef
+  }
+
+  it('elimina imagen de Storage al eliminar estrella con imagen', async () => {
+    setupStarRef({ imagePath: 'stars/sky-1/star-123/image' })
+    const res = makeRes()
+    await deleteStar(makeDeleteReq(), res)
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(mocks.storageFile).toHaveBeenCalledWith('stars/sky-1/star-123/image')
+    expect(mocks.storageDelete).toHaveBeenCalled()
+  })
+
+  it('no intenta eliminar Storage si star no tiene imagen', async () => {
+    setupStarRef({ imagePath: null })
+    const res = makeRes()
+    await deleteStar(makeDeleteReq(), res)
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(mocks.storageFile).not.toHaveBeenCalled()
+  })
+
+  it('completa soft-delete aun si Storage delete falla', async () => {
+    mocks.storageDelete.mockRejectedValueOnce(new Error('Storage error'))
+    const starRef = setupStarRef({ imagePath: 'stars/sky-1/star-123/image' })
+    const res = makeRes()
+    await deleteStar(makeDeleteReq(), res)
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(starRef.update).toHaveBeenCalledWith(
+      expect.objectContaining({ deletedAt: expect.any(String) }),
     )
   })
 })

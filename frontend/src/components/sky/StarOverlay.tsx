@@ -24,6 +24,8 @@ function formatDate(iso: string): string {
   })
 }
 
+const downloadUrlCache = new Map<string, string>()
+
 export function StarOverlay({ star, role, currentUserId, onClose, onEdit }: StarOverlayProps) {
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [imageLoaded, setImageLoaded] = useState(false)
@@ -34,8 +36,15 @@ export function StarOverlay({ star, role, currentUserId, onClose, onEdit }: Star
     setImageLoaded(false)
     let cancelled = false
 
+    const cached = downloadUrlCache.get(star.imagePath)
+    if (cached) {
+      setImageUrl(cached)
+      return
+    }
+
     getDownloadURL(ref(storage, star.imagePath))
       .then((url) => {
+        downloadUrlCache.set(star.imagePath!, url)
         if (!cancelled) setImageUrl(url)
       })
       .catch(() => {})

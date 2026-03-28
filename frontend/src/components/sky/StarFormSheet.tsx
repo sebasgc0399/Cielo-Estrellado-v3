@@ -105,16 +105,38 @@ export function StarFormSheet({
         })
 
         if (imageFile) {
+          let uploadedPath: string | null = null
           try {
-            const path = await uploadStarImage(skyId, res.starId, imageFile)
-            await api(`/api/skies/${skyId}/stars/${res.starId}`, {
-              method: 'PATCH',
-              body: JSON.stringify({ imagePath: path, title: trimTitle }),
-            })
+            uploadedPath = await uploadStarImage(skyId, res.starId, imageFile)
           } catch {
             toast.warning('Estrella creada pero la imagen no se pudo subir')
             onSuccess()
             return
+          }
+
+          const patchUrl = `/api/skies/${skyId}/stars/${res.starId}`
+          const patchOpts = {
+            method: 'PATCH' as const,
+            body: JSON.stringify({ imagePath: uploadedPath, title: trimTitle }),
+          }
+
+          try {
+            await api(patchUrl, patchOpts)
+          } catch {
+            try {
+              await api(patchUrl, patchOpts)
+            } catch (retryError) {
+              if (retryError instanceof ApiError && retryError.status === 409) {
+                // 409 = el primer PATCH SI tuvo exito (respuesta perdida en red)
+              } else {
+                toast.warning(
+                  'Estrella creada pero la imagen no se pudo vincular. '
+                  + 'Puedes agregarla editando la estrella.'
+                )
+                onSuccess()
+                return
+              }
+            }
           }
         }
 

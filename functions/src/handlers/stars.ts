@@ -406,6 +406,10 @@ export async function deleteStar(req: Request, res: Response): Promise<void> {
       deletedByUserId: decoded.uid,
     })
 
+    // DECISION: hard-delete imagen en soft-delete de star.
+    // La imagen es inaccesible tras soft-delete (storage rules verifican deletedAt == null).
+    // Si se implementa restore, considerar mover a path "trash/" en vez de eliminar.
+    // Ver audits/09-storage-uploads.md B1.
     if (star.imagePath) {
       try {
         await storage.bucket().file(star.imagePath).delete()
