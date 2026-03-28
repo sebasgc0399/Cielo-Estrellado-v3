@@ -26,7 +26,6 @@ export interface UserRecord {
   createdAt: IsoDateString
   lastLoginAt: IsoDateString | null
   status: UserStatus
-  sessionVersion: number
   stardust: number
   maxSkies: number
   maxMemberships: number

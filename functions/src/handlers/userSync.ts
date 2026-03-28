@@ -69,7 +69,6 @@ export async function userSync(req: Request, res: Response): Promise<void> {
             acceptedInvitesToday: 0,
             lastInviteAcceptDate: null,
             status: 'active',
-            sessionVersion: 1,
           })
           transaction.create(userRef.collection('transactions').doc(), welcomeTx)
         }
@@ -84,7 +83,6 @@ export async function userSync(req: Request, res: Response): Promise<void> {
         createdAt: now,
         lastLoginAt: now,
         status: 'active',
-        sessionVersion: 1,
         stardust: WELCOME_BONUS,
         maxSkies: 2,
         maxMemberships: 20,
@@ -98,10 +96,12 @@ export async function userSync(req: Request, res: Response): Promise<void> {
         lastInviteAcceptDate: null,
       }
 
-      const batch = db.batch()
-      batch.set(userRef, newUser)
-      batch.create(userRef.collection('transactions').doc(), welcomeTx)
-      await batch.commit()
+      await db.runTransaction(async (t) => {
+        const snap = await t.get(userRef)
+        if (snap.exists) return // otro request concurrente ya creo el usuario
+        t.set(userRef, newUser)
+        t.create(userRef.collection('transactions').doc(), welcomeTx)
+      })
     }
 
     res.status(200).json({ status: 'ok' })

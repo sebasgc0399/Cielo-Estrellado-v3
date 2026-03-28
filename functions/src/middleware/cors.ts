@@ -6,7 +6,9 @@ const ALLOWED_HEADERS = 'Content-Type, Authorization'
 
 function getAllowedOrigin(requestOrigin: string | undefined): string | null {
   if (!requestOrigin) return null
-  if (requestOrigin === 'http://localhost:5173') return requestOrigin
+  if (process.env.NODE_ENV !== 'production' && requestOrigin === 'http://localhost:5173') {
+    return requestOrigin
+  }
   const appUrl = process.env.APP_URL
   if (appUrl && requestOrigin === appUrl) return requestOrigin
   return null

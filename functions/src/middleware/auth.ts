@@ -8,5 +8,5 @@ export async function authenticateRequest(req: Request): Promise<DecodedIdToken>
     throw new HttpsError('unauthenticated', 'Missing or invalid Authorization header')
   }
   const token = header.split('Bearer ')[1]
-  return auth.verifyIdToken(token)
+  return auth.verifyIdToken(token, true)
 }
