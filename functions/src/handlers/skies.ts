@@ -71,6 +71,10 @@ export async function createSky(req: Request, res: Response): Promise<void> {
     const decoded = await authenticateRequest(req)
 
     const body = req.body as { title?: unknown }
+    // No HTML sanitization — React escapes {text} in JSX by default.
+    // Safe as long as these values are rendered as text content, not via
+    // dangerouslySetInnerHTML or as href/src attributes.
+    // See audits/05-validacion-inputs.md M1.
     const rawTitle = typeof body.title === 'string' ? body.title.trim() : ''
 
     if (!rawTitle) {
@@ -172,6 +176,7 @@ export async function updateSky(req: Request, res: Response): Promise<void> {
     }
 
     if (hasTitle) {
+      // No HTML sanitization — same rationale as createSky. See audits/05-validacion-inputs.md M1.
       const rawTitle = typeof body.title === 'string' ? body.title.trim() : ''
       if (!rawTitle) {
         res.status(400).json({ error: 'El título no puede estar vacío' })

@@ -182,7 +182,8 @@ export async function getTransactions(req: Request, res: Response): Promise<void
 
     const rawLimit = typeof req.query.limit === 'string' ? parseInt(req.query.limit, 10) : 20
     const limit = Math.min(Math.max(1, isNaN(rawLimit) ? 20 : rawLimit), 50)
-    const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : null
+    const rawCursor = typeof req.query.cursor === 'string' ? req.query.cursor : null
+    const cursor = rawCursor && rawCursor.length > 0 && rawCursor.length <= 128 ? rawCursor : null
 
     let query = userRef
       .collection('transactions')

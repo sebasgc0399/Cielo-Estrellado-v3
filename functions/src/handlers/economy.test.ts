@@ -397,4 +397,29 @@ describe('getTransactions', () => {
     expect(body.transactions).toHaveLength(0)
     expect(body.nextCursor).toBeNull()
   })
+
+  it('ignora cursor excesivamente largo (> 128 chars)', async () => {
+    mocks.queryGet.mockResolvedValue({ docs: [] })
+    const longCursor = 'a'.repeat(200)
+
+    const res = makeRes()
+    await getTransactions(makeReq({ cursor: longCursor }), res)
+
+    expect(res.status).toHaveBeenCalledWith(200)
+    // docGet NO debe llamarse — cursor rechazado antes del read a Firestore
+    expect(mocks.docGet).not.toHaveBeenCalled()
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ transactions: expect.any(Array) }),
+    )
+  })
+
+  it('ignora cursor vacio', async () => {
+    mocks.queryGet.mockResolvedValue({ docs: [] })
+
+    const res = makeRes()
+    await getTransactions(makeReq({ cursor: '' }), res)
+
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(mocks.docGet).not.toHaveBeenCalled()
+  })
 })

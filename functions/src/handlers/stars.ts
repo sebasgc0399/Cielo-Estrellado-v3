@@ -56,6 +56,10 @@ export async function createStar(req: Request, res: Response): Promise<void> {
       year?: unknown
     }
 
+    // No HTML sanitization — React escapes {text} in JSX by default.
+    // Safe as long as these values are rendered as text content, not via
+    // dangerouslySetInnerHTML or as href/src attributes.
+    // See audits/05-validacion-inputs.md M1.
     const rawTitle = typeof body.title === 'string' ? body.title.trim() : ''
     if (!rawTitle) {
       res.status(400).json({ error: 'El título es obligatorio' })
@@ -66,6 +70,7 @@ export async function createStar(req: Request, res: Response): Promise<void> {
       return
     }
 
+    // No HTML sanitization — same rationale as rawTitle above. See audits/05-validacion-inputs.md M1.
     const rawMessage = typeof body.message === 'string' ? body.message.trim() : ''
     if (rawMessage.length > STAR_MESSAGE_MAX_LENGTH) {
       res.status(400).json({ error: `El mensaje no puede superar ${STAR_MESSAGE_MAX_LENGTH} caracteres` })
@@ -235,6 +240,7 @@ export async function updateStar(req: Request, res: Response): Promise<void> {
       return
     }
 
+    // year is intentionally excluded — immutable after creation. See audits/05-validacion-inputs.md B2.
     const body = req.body as {
       title?: unknown
       message?: unknown
@@ -243,6 +249,10 @@ export async function updateStar(req: Request, res: Response): Promise<void> {
       imagePath?: unknown
     }
 
+    // No HTML sanitization — React escapes {text} in JSX by default.
+    // Safe as long as these values are rendered as text content, not via
+    // dangerouslySetInnerHTML or as href/src attributes.
+    // See audits/05-validacion-inputs.md M1.
     const rawTitle = typeof body.title === 'string' ? body.title.trim() : ''
     if (!rawTitle) {
       res.status(400).json({ error: 'El título es obligatorio' })
@@ -253,6 +263,7 @@ export async function updateStar(req: Request, res: Response): Promise<void> {
       return
     }
 
+    // No HTML sanitization — same rationale as rawTitle above. See audits/05-validacion-inputs.md M1.
     const rawMessage = typeof body.message === 'string' ? body.message.trim() : ''
     if (rawMessage.length > STAR_MESSAGE_MAX_LENGTH) {
       res.status(400).json({ error: `El mensaje no puede superar ${STAR_MESSAGE_MAX_LENGTH} caracteres` })
