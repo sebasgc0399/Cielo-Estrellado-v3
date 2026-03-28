@@ -1,4 +1,8 @@
 rules_version = '2';
+// Colecciones activas del proyecto: ver functions/src/domain/contracts.ts
+// Invariante clave: /skies/{skyId}/stars/{starId} es el unico path con read directo desde el cliente.
+// Todas las escrituras son via Cloud Functions (Admin SDK, bypasea estas reglas).
+// El catch-all al final deniega cualquier coleccion no listada explicitamente.
 service cloud.firestore {
   match /databases/{database}/documents {
 

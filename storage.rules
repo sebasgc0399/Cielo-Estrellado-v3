@@ -12,27 +12,28 @@ service firebase.storage {
       }
 
       function isActiveMember() {
-        return firestore.exists(memberRef())
-          && firestore.get(memberRef()).data.status == 'active'
-          && firestore.get(memberRef()).data.role in ['owner', 'editor', 'viewer'];
+        let member = firestore.get(memberRef());
+        return member.data != null
+          && member.data.status == 'active'
+          && member.data.role in ['owner', 'editor', 'viewer'];
       }
 
       function starExistsAndActive() {
-        return firestore.exists(starRef())
-          && firestore.get(starRef()).data.deletedAt == null;
+        let star = firestore.get(starRef());
+        return star.data != null
+          && star.data.deletedAt == null;
       }
 
       function canAttach() {
-        return firestore.exists(memberRef())
-          && firestore.get(memberRef()).data.status == 'active'
-          && starExistsAndActive()
-          && (
-            firestore.get(memberRef()).data.role == 'owner'
-            || (
-              firestore.get(memberRef()).data.role == 'editor'
-              && firestore.get(starRef()).data.authorUserId == request.auth.uid
-            )
-          );
+        let member = firestore.get(memberRef());
+        let star = firestore.get(starRef());
+        return member.data != null
+          && member.data.status == 'active'
+          && star.data != null
+          && star.data.deletedAt == null
+          && (member.data.role == 'owner'
+            || (member.data.role == 'editor'
+              && star.data.authorUserId == request.auth.uid));
       }
 
       // read: miembro activo + estrella existe y no está soft-deleted
@@ -64,13 +65,22 @@ service firebase.storage {
       }
 
       function isActiveSharedLegacyMember() {
-        return firestore.exists(legacyMemberRef())
-          && firestore.get(legacyMemberRef()).data.status == 'active'
-          && firestore.get(legacyMemberRef()).data.role in ['owner', 'editor', 'viewer'];
+        let member = firestore.get(legacyMemberRef());
+        return member.data != null
+          && member.data.status == 'active'
+          && member.data.role in ['owner', 'editor', 'viewer'];
       }
 
       allow read: if request.auth != null && isActiveSharedLegacyMember();
       allow write: if false;
+    }
+
+    // Catch-all deny — cualquier path no cubierto explicitamente queda bloqueado.
+    // Para agregar paths nuevos (ej. SPEC_v3: temp/{skyId}/{starId}/raw,
+    // stars/{skyId}/{starId}/video, stars/{skyId}/{starId}/thumb),
+    // insertar las reglas ANTES de este bloque.
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }
