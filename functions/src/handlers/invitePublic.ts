@@ -35,7 +35,7 @@ export async function previewInvite(req: Request, res: Response): Promise<void> 
     const doc = snapshot.docs[0]
     const invite = doc.data() as InviteRecord
 
-    if (invite.status === 'revoked' || invite.status === 'accepted' || invite.status === 'expired' || new Date(invite.expiresAt) <= new Date()) {
+    if (invite.status === 'revoked' || invite.status === 'accepted' || invite.status === 'expired' || invite.expiresAt.toDate() <= new Date()) {
       res.status(200).json({ valid: false })
       return
     }

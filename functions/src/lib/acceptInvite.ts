@@ -30,7 +30,7 @@ export async function acceptInvite(inviteId: string, uid: string): Promise<{ sky
     if (invite.status === 'accepted') {
       throw new InviteError('invite_already_used', 'Invitación ya utilizada')
     }
-    if (invite.expiresAt < now) {
+    if (invite.expiresAt.toDate() <= new Date()) {
       throw new InviteError('invite_expired', 'Invitación expirada')
     }
 

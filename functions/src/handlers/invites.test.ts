@@ -1,6 +1,12 @@
 import type { Request } from 'firebase-functions/v2/https'
 import type { Response } from 'express'
 
+/** Simula un Firestore Timestamp en mocks */
+function ts(iso: string) {
+  const d = new Date(iso)
+  return { toDate: () => d, seconds: Math.floor(d.getTime() / 1000), nanoseconds: 0 }
+}
+
 const mocks = vi.hoisted(() => {
   const memberGet = vi.fn()
   const invitesGet = vi.fn()
@@ -196,13 +202,13 @@ describe('createInviteHandler', () => {
 describe('listInvites', () => {
   it('lista invites pendientes filtrando expiradas', async () => {
     setupOwner()
-    const futureDate = new Date(Date.now() + 86400000).toISOString()
-    const pastDate = new Date(Date.now() - 86400000).toISOString()
+    const futureTs = ts(new Date(Date.now() + 86400000).toISOString())
+    const pastTs = ts(new Date(Date.now() - 86400000).toISOString())
     mocks.invitesGet.mockResolvedValue({
       empty: false,
       docs: [
-        { id: 'inv-1', data: () => ({ role: 'editor', expiresAt: futureDate, status: 'pending' }) },
-        { id: 'inv-2', data: () => ({ role: 'viewer', expiresAt: pastDate, status: 'pending' }) },
+        { id: 'inv-1', data: () => ({ role: 'editor', expiresAt: futureTs, status: 'pending' }) },
+        { id: 'inv-2', data: () => ({ role: 'viewer', expiresAt: pastTs, status: 'pending' }) },
       ],
     })
 
@@ -215,7 +221,7 @@ describe('listInvites', () => {
     expect(jsonArg.invites[0]).toEqual({
       inviteId: 'inv-1',
       role: 'editor',
-      expiresAt: futureDate,
+      expiresAt: futureTs.toDate().toISOString(),
     })
   })
 

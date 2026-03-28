@@ -79,7 +79,7 @@ export interface InviteRecord {
   role: InviteRole
   tokenHash: string
   createdByUserId: string
-  expiresAt: IsoDateString
+  expiresAt: FirebaseFirestore.Timestamp
   status: InviteStatus
   acceptedByUserId: string | null
   acceptedAt: IsoDateString | null

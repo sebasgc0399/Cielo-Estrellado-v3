@@ -1,4 +1,5 @@
 import { randomBytes, createHash } from 'node:crypto'
+import { Timestamp } from 'firebase-admin/firestore'
 import { db } from './firebaseAdmin.js'
 import type { InviteRole } from '../domain/contracts.js'
 import { INVITE_TTL_MS } from '../domain/policies.js'
@@ -20,7 +21,7 @@ export async function createInvite(
     role,
     tokenHash,
     createdByUserId,
-    expiresAt: new Date(now.getTime() + INVITE_TTL_MS).toISOString(),
+    expiresAt: Timestamp.fromDate(new Date(now.getTime() + INVITE_TTL_MS)),
     status: 'pending',
     acceptedByUserId: null,
     acceptedAt: null,

@@ -5,6 +5,7 @@ import { db } from '../lib/firebaseAdmin.js'
 import { createInvite } from '../lib/createInvite.js'
 import { revokeInvite, RevokeError } from '../lib/revokeInvite.js'
 import type { MemberRecord, InviteRecord, InviteRole, IsoDateString } from '../domain/contracts.js'
+import { Timestamp } from 'firebase-admin/firestore'
 import { MAX_PENDING_INVITES_PER_SKY } from '../domain/economyRules.js'
 import { logError } from '../logError.js'
 
@@ -33,11 +34,10 @@ export async function createInviteHandler(req: Request, res: Response): Promise<
       return
     }
 
-    const nowISO = new Date().toISOString()
     const pendingSnap = await db.collection('invites')
       .where('skyId', '==', skyId)
       .where('status', '==', 'pending')
-      .where('expiresAt', '>', nowISO)
+      .where('expiresAt', '>', Timestamp.now())
       .count()
       .get()
 
@@ -96,11 +96,11 @@ export async function listInvites(req: Request, res: Response): Promise<void> {
     if (!snap.empty) {
       for (const doc of snap.docs) {
         const invite = doc.data() as InviteRecord
-        if (new Date(invite.expiresAt) > now) {
+        if (invite.expiresAt.toDate() > now) {
           invites.push({
             inviteId: doc.id,
             role: invite.role,
-            expiresAt: invite.expiresAt,
+            expiresAt: invite.expiresAt.toDate().toISOString(),
           })
         }
       }

@@ -117,16 +117,10 @@ gcloud firestore fields ttls update expiresAt \
 
 ### Decisiones de diseno
 
-- **TTL policy nativa vs cron job:** La TTL policy es zero-maintenance — no requiere Cloud Functions, no tiene cold starts, no falla por timeouts. Un cron job semanal es la alternativa si por alguna razon la TTL policy no es viable.
+- **TTL policy nativa vs cron job:** La TTL policy es zero-maintenance — no requiere Cloud Functions, no tiene cold starts, no falla por timeouts.
 - **Sin margen adicional:** Se usa `expiresAt` directamente. El retraso de Firestore (24-72h) da tiempo suficiente para que cualquier operacion en curso se complete.
-- **IMPORTANTE — `expiresAt` es ISO string, no Timestamp nativo:** El codigo actual almacena `expiresAt` como string ISO 8601 (`new Date().toISOString()` en `createInvite.ts:20`). La documentacion de Firestore TTL **requiere que el campo sea de tipo `Timestamp`**, no string. Esto significa que la TTL policy NO funcionara con el formato actual. **Accion requerida:** Antes de configurar la TTL policy, modificar `createInvite.ts` para almacenar `expiresAt` como `Timestamp` nativo de Firestore:
-  ```typescript
-  import { Timestamp } from 'firebase-admin/firestore'
-  // ...
-  expiresAt: Timestamp.fromDate(new Date(now.getTime() + INVITE_TTL_MS)),
-  ```
-  Este cambio afecta tambien a todos los consumidores de `expiresAt` que hoy comparan strings (`new Date(invite.expiresAt) > now`). Evaluar si el cambio vale la pena ahora o si es mejor diferirlo y usar un cron job temporal. Si se difiere, documentar como deuda tecnica.
-- **Impacto en Fix 1:** Con la TTL policy activa, los documentos expirados se eliminan automaticamente. Fix 1 ya filtra por `expiresAt > now` asi que no depende de la TTL, pero la TTL mantiene la coleccion limpia para otros queries (como `listInvites`).
+- **`expiresAt` convertido a Timestamp nativo (RESUELTO 2026-03-28):** Firestore TTL requiere tipo `Timestamp`, no string. Se convirtio `expiresAt` de ISO string a `Timestamp.fromDate()` en `createInvite.ts:24`. Se actualizaron todos los consumidores (`acceptInvite.ts`, `revokeInvite.ts`, `invitePublic.ts`, `invites.ts`) para usar `.toDate()` en comparaciones. Se actualizo el tipo en `contracts.ts:82` de `IsoDateString` a `FirebaseFirestore.Timestamp`. Los documentos viejos con formato string se eliminaron manualmente (0-3 docs). La TTL policy se configuro via `gcloud firestore fields ttls update` y esta activa (`state: ACTIVE`).
+- **Impacto en Fix 1:** Con la TTL policy activa, los documentos expirados se eliminan automaticamente. Fix 1 ya filtra por `expiresAt > Timestamp.now()` asi que no depende de la TTL, pero la TTL mantiene la coleccion limpia para otros queries (como `listInvites`).
 
 ---
 
@@ -926,8 +920,10 @@ cd functions && npx tsc --noEmit
 
 ### Checklist post-deploy
 
-- [ ] Verificar que el indice compuesto `invites` → `skyId` (ASC), `status` (ASC), `expiresAt` (ASC) existe (SPEC-Firestore-rules Fix 0). Si no, crearlo manualmente desde la consola.
-- [ ] Configurar TTL policy en Firestore para coleccion `invites` sobre campo `expiresAt` (**solo despues de convertir `expiresAt` a Timestamp nativo** — ver nota en Fix 2)
+- [x] Verificar que el indice compuesto `invites` → `skyId` (ASC), `status` (ASC), `expiresAt` (ASC) existe — desplegado via `firestore.indexes.json`
+- [x] Convertir `expiresAt` de ISO string a `Timestamp` nativo en `createInvite.ts` y todos los consumidores (2026-03-28)
+- [x] Eliminar documentos viejos con `expiresAt` como string en Firestore (2026-03-28)
+- [x] Configurar TTL policy en Firestore: `gcloud firestore fields ttls update expiresAt --collection-group=invites --enable-ttl` — `state: ACTIVE` (2026-03-28)
 - [ ] Verificar que un owner no puede crear mas de 10 invitaciones pendientes por cielo
 - [ ] Verificar que un cielo con 50 miembros activos rechaza nuevas aceptaciones
 - [ ] Verificar que `previewInvite` retorna `valid: false` para invites expiradas/revocadas/aceptadas
@@ -938,7 +934,7 @@ cd functions && npx tsc --noEmit
 | Riesgo | Probabilidad | Mitigacion |
 |--------|-------------|------------|
 | Indice compuesto de 3 campos no creado antes del deploy (Fix 1) | Media | El error de Firestore incluye link para crearlo. Crear ANTES del deploy. |
-| TTL policy NO funciona con ISO strings — requiere Timestamp nativo | Media | `expiresAt` se almacena como string ISO (`createInvite.ts:20`). Firestore TTL requiere tipo `Timestamp`. Convertir a Timestamp nativo antes de configurar la TTL, o usar cron job como alternativa temporal. Ver nota detallada en Fix 2. |
+| ~~TTL policy NO funciona con ISO strings~~ | ~~Media~~ | **RESUELTO 2026-03-28.** `expiresAt` convertido a `Timestamp` nativo. TTL policy activa. |
 | `.count()` no disponible en firebase-admin (Fix 1, 4) | Muy baja | Ya se usa exitosamente en `payments.ts`. La version del SDK es compatible. |
 | Race condition en MAX_MEMBERS_PER_SKY (Fix 4) | Baja | Podria exceder por 1-2 miembros en concurrencia extrema. Diferencia insignificante. |
 | Mocks de invitePublic.test.ts complejos al expandir (Fix 5 expand) | Media | Seguir patron exacto de payments.test.ts para chainable where/count. Testear incrementalmente. |

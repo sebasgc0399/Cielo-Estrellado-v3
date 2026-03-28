@@ -32,8 +32,7 @@ export async function revokeInvite(inviteId: string, skyId: string): Promise<voi
       throw new RevokeError('invite_already_revoked', 'Invitación ya revocada')
     }
 
-    const now = new Date().toISOString()
-    if (invite.expiresAt < now) {
+    if (invite.expiresAt.toDate() <= new Date()) {
       throw new RevokeError('invite_expired', 'Invitación expirada')
     }
 

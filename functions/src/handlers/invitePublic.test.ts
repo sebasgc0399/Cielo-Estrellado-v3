@@ -4,6 +4,12 @@ import type { Response } from 'express'
 const FIXED_NOW = new Date('2026-01-15T12:00:00Z')
 const TODAY = '2026-01-15'
 
+/** Simula un Firestore Timestamp en mocks */
+function ts(iso: string) {
+  const d = new Date(iso)
+  return { toDate: () => d, seconds: Math.floor(d.getTime() / 1000), nanoseconds: 0 }
+}
+
 const mocks = vi.hoisted(() => {
   const transaction = { get: vi.fn(), update: vi.fn(), set: vi.fn() }
   const txAdd = vi.fn().mockResolvedValue({ id: 'tx-id' })
@@ -154,7 +160,7 @@ describe('previewInvite', () => {
   it('retorna valid:true para invite pendiente no expirada', async () => {
     mocks.invitesGet.mockResolvedValue({
       empty: false,
-      docs: [{ data: () => ({ status: 'pending', expiresAt: '2026-02-01T00:00:00Z', skyId: 'sky-1', role: 'editor' }) }],
+      docs: [{ data: () => ({ status: 'pending', expiresAt: ts('2026-02-01T00:00:00Z'), skyId: 'sky-1', role: 'editor' }) }],
     })
     mocks.skyGet.mockResolvedValue({ exists: true, data: () => ({ title: 'Mi Cielo' }) })
 
@@ -173,7 +179,7 @@ describe('previewInvite', () => {
   it('retorna valid:false para invite expirada', async () => {
     mocks.invitesGet.mockResolvedValue({
       empty: false,
-      docs: [{ data: () => ({ status: 'pending', expiresAt: '2026-01-14T00:00:00Z', skyId: 'sky-1', role: 'editor' }) }],
+      docs: [{ data: () => ({ status: 'pending', expiresAt: ts('2026-01-14T00:00:00Z'), skyId: 'sky-1', role: 'editor' }) }],
     })
 
     const res = makeRes()
@@ -186,7 +192,7 @@ describe('previewInvite', () => {
   it('retorna valid:false para invite revocada', async () => {
     mocks.invitesGet.mockResolvedValue({
       empty: false,
-      docs: [{ data: () => ({ status: 'revoked', expiresAt: '2026-02-01T00:00:00Z', skyId: 'sky-1', role: 'editor' }) }],
+      docs: [{ data: () => ({ status: 'revoked', expiresAt: ts('2026-02-01T00:00:00Z'), skyId: 'sky-1', role: 'editor' }) }],
     })
 
     const res = makeRes()
@@ -199,7 +205,7 @@ describe('previewInvite', () => {
   it('retorna valid:false para invite aceptada', async () => {
     mocks.invitesGet.mockResolvedValue({
       empty: false,
-      docs: [{ data: () => ({ status: 'accepted', expiresAt: '2026-02-01T00:00:00Z', skyId: 'sky-1', role: 'editor' }) }],
+      docs: [{ data: () => ({ status: 'accepted', expiresAt: ts('2026-02-01T00:00:00Z'), skyId: 'sky-1', role: 'editor' }) }],
     })
 
     const res = makeRes()
@@ -222,7 +228,7 @@ describe('previewInvite', () => {
   it('retorna skyTitle por defecto si cielo no existe', async () => {
     mocks.invitesGet.mockResolvedValue({
       empty: false,
-      docs: [{ data: () => ({ status: 'pending', expiresAt: '2026-02-01T00:00:00Z', skyId: 'sky-gone', role: 'viewer' }) }],
+      docs: [{ data: () => ({ status: 'pending', expiresAt: ts('2026-02-01T00:00:00Z'), skyId: 'sky-gone', role: 'viewer' }) }],
     })
     mocks.skyGet.mockResolvedValue({ exists: false, data: () => null })
 
