@@ -18,7 +18,8 @@ const REASON_LABELS: Record<string, string> = {
   streak_30: 'Racha de 30 días',
   invite_accepted: 'Invitación aceptada',
   weekly_bonus: 'Bonus semanal',
-  shop_purchase: 'Compra',
+  shop_purchase: 'Compra de Tienda',
+  purchase: 'Compra de Polvo Estelar',
 }
 
 export function formatRelativeDate(iso: string): string {
