@@ -6,7 +6,7 @@ import { db } from '../lib/firebaseAdmin.js'
 import { findInviteIdByToken } from '../lib/findInviteIdByToken.js'
 import { acceptInvite, InviteError } from '../lib/acceptInvite.js'
 import type { InviteRecord, SkyRecord, TransactionRecord } from '../domain/contracts.js'
-import { INVITE_ACCEPTED_REWARD, MAX_INVITE_REWARDS_PER_DAY } from '../domain/economyRules.js'
+import { INVITE_ACCEPTED_REWARD, MAX_INVITE_REWARDS_PER_DAY, MAX_MEMBERS_PER_SKY } from '../domain/economyRules.js'
 import { DEFAULT_USER_ECONOMY } from '../domain/defaults.js'
 import { logError } from '../logError.js'
 
@@ -14,7 +14,11 @@ export async function previewInvite(req: Request, res: Response): Promise<void> 
   try {
     const { token } = req.routeParams
 
-    // Inline getInviteByToken logic
+    // Busca sin filtrar por status intencionalmente: preview debe retornar
+    // { valid: false } para invites aceptadas/revocadas/expiradas, en vez de
+    // un generico 404. Esto da feedback al usuario sobre por que el enlace
+    // ya no funciona. Contrasta con findInviteIdByToken() que SI filtra por
+    // status 'pending' porque solo necesita encontrar invites aceptables.
     const tokenHash = createHash('sha256').update(token).digest('hex')
 
     const snapshot = await db
@@ -75,6 +79,27 @@ export async function acceptInviteHandler(req: Request, res: Response): Promise<
 
     if (memberSnap.size >= maxMemberships) {
       res.status(403).json({ error: 'Has alcanzado el límite de cielos como miembro', maxMemberships })
+      return
+    }
+
+    // Verificar que el cielo no exceda su limite de miembros
+    const inviteSnap = await db.collection('invites').doc(inviteId).get()
+    if (!inviteSnap.exists) {
+      res.status(404).json({ error: 'Invitación no encontrada' })
+      return
+    }
+    const inviteData = inviteSnap.data() as InviteRecord
+
+    const skyMembersSnap = await db
+      .collection('skies')
+      .doc(inviteData.skyId)
+      .collection('members')
+      .where('status', '==', 'active')
+      .count()
+      .get()
+
+    if (skyMembersSnap.data().count >= MAX_MEMBERS_PER_SKY) {
+      res.status(403).json({ error: 'Este cielo ha alcanzado el límite de miembros', maxMembers: MAX_MEMBERS_PER_SKY })
       return
     }
 

@@ -8,3 +8,5 @@ export const WEEKLY_BONUS = 20
 export const WELCOME_BONUS = 150
 export const MAX_STARS_REWARD_PER_DAY = 10
 export const MAX_INVITE_REWARDS_PER_DAY = 5
+export const MAX_PENDING_INVITES_PER_SKY = 10
+export const MAX_MEMBERS_PER_SKY = 50

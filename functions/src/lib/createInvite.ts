@@ -12,6 +12,9 @@ export async function createInvite(
   const tokenHash = createHash('sha256').update(token).digest('hex')
   const now = new Date()
 
+  // La coleccion 'invites' tiene una TTL policy de Firestore configurada
+  // sobre el campo 'expiresAt'. Firestore elimina automaticamente los documentos
+  // expirados (con retraso tipico de 24-72h). Ver SPEC-invitaciones.md Fix 2.
   await db.collection('invites').add({
     skyId,
     role,

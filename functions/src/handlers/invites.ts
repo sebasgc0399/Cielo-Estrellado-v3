@@ -5,6 +5,7 @@ import { db } from '../lib/firebaseAdmin.js'
 import { createInvite } from '../lib/createInvite.js'
 import { revokeInvite, RevokeError } from '../lib/revokeInvite.js'
 import type { MemberRecord, InviteRecord, InviteRole, IsoDateString } from '../domain/contracts.js'
+import { MAX_PENDING_INVITES_PER_SKY } from '../domain/economyRules.js'
 import { logError } from '../logError.js'
 
 async function requireOwner(skyId: string, uid: string): Promise<MemberRecord | null> {
@@ -29,6 +30,19 @@ export async function createInviteHandler(req: Request, res: Response): Promise<
     const member = await requireOwner(skyId, decoded.uid)
     if (!member) {
       res.status(403).json({ error: 'Solo el propietario puede crear invitaciones' })
+      return
+    }
+
+    const nowISO = new Date().toISOString()
+    const pendingSnap = await db.collection('invites')
+      .where('skyId', '==', skyId)
+      .where('status', '==', 'pending')
+      .where('expiresAt', '>', nowISO)
+      .count()
+      .get()
+
+    if (pendingSnap.data().count >= MAX_PENDING_INVITES_PER_SKY) {
+      res.status(429).json({ error: 'Demasiadas invitaciones pendientes para este cielo' })
       return
     }
 
