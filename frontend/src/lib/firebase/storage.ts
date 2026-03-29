@@ -1,5 +1,7 @@
-import { ref, uploadBytes } from 'firebase/storage'
-import { storage } from './client'
+import { getStorage, ref, uploadBytes } from 'firebase/storage'
+import { app } from './app'
+
+export const storage = getStorage(app)
 
 export async function uploadStarImage(
   skyId: string,

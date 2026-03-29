@@ -10,6 +10,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: 'script-defer',
       includeAssets: ['icon-512.png'],
       manifest: {
         name: 'Cielo Estrellado',
@@ -64,8 +65,10 @@ export default defineConfig({
       output: {
         manualChunks: {
           'vendor-react': ['react', 'react-dom', 'react-router'],
-          'vendor-ui': ['@base-ui/react', 'motion', 'sonner'],
-          'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
+          'vendor-ui': ['@base-ui/react', 'sonner'],
+          'vendor-motion': ['motion'],
+          'vendor-firebase-core': ['firebase/app', 'firebase/auth'],
+          'vendor-firebase-data': ['firebase/firestore'],
         },
       },
     },

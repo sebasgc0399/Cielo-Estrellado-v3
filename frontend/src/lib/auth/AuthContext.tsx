@@ -16,7 +16,7 @@ import {
   createUserWithEmailAndPassword,
   type User,
 } from 'firebase/auth'
-import { auth } from '@/lib/firebase/client'
+import { auth } from '@/lib/firebase/auth'
 import { api } from '@/lib/api/client'
 
 export interface AuthUser {
@@ -51,15 +51,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const unsubscribe = onIdTokenChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onIdTokenChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
-        setLoading(true)
         setUser(toAuthUser(firebaseUser))
-        try {
-          await api('/api/userSync', { method: 'POST' })
-        } catch (e) {
+        // userSync en background — no bloquea el render
+        api('/api/userSync', { method: 'POST' }).catch(e =>
           console.error('userSync failed:', e)
-        }
+        )
       } else {
         setUser(null)
       }

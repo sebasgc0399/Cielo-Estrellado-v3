@@ -12,13 +12,27 @@
       }
     </style>
     <meta name="theme-color" content="#05080f" />
+    <!-- Firebase Auth iframe — NO usa CORS, usa same-origin cookies -->
+    <link rel="preconnect" href="https://masmelito-f209c.firebaseapp.com">
+    <link rel="dns-prefetch" href="https://masmelito-f209c.firebaseapp.com">
+    <!-- Google APIs — CORS requests -->
+    <link rel="preconnect" href="https://www.googleapis.com" crossorigin>
+    <link rel="dns-prefetch" href="https://www.googleapis.com">
+    <!-- Google Sign-In SDK -->
+    <link rel="preconnect" href="https://apis.google.com">
+    <link rel="dns-prefetch" href="https://apis.google.com">
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Cielo Estrellado" />
     <link rel="apple-touch-icon" href="/icon-512.png" />
   </head>
   <body>
+    <!-- LCP element — visible inmediatamente, FUERA de React -->
+    <div id="static-landing" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,rgba(140,180,255,0.03) 0%,#05080f 70%);z-index:9999">
+      <h1 style="font-size:1.75rem;font-weight:300;letter-spacing:0.2em;color:rgba(255,255,255,0.95);font-family:'Georgia','Palatino Linotype','Book Antiqua',Palatino,serif;animation:fade-in-up .4s ease-out .24s both">Cielo Estrellado</h1>
+    </div>
     <div id="root"></div>
+    <style>@keyframes fade-in-up{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}</style>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

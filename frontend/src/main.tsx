@@ -1,4 +1,4 @@
-import { StrictMode, lazy, Suspense } from 'react'
+import { StrictMode, lazy, Suspense, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router'
 import { AuthProvider, useAuth } from '@/lib/auth/AuthContext'
@@ -21,6 +21,15 @@ function RootRedirect() {
 }
 
 function App() {
+  useEffect(() => {
+    const el = document.getElementById('static-landing')
+    if (el) {
+      el.style.transition = 'opacity 0.3s'
+      el.style.opacity = '0'
+      setTimeout(() => el.remove(), 300)
+    }
+  }, [])
+
   return (
     <ErrorBoundary>
       <AuthProvider>

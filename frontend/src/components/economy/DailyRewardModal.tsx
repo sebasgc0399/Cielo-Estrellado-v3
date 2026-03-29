@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import confetti from 'canvas-confetti'
 import { BlurFade } from '@/components/ui/blur-fade'
 import { NumberTicker } from '@/components/ui/number-ticker'
 import { ShimmerButton } from '@/components/ui/shimmer-button'
@@ -18,7 +17,8 @@ interface DailyRewardModalProps {
   onClose: () => void
 }
 
-function fireStarConfetti() {
+async function fireStarConfetti() {
+  const confetti = (await import('canvas-confetti')).default
   const defaults = {
     spread: 360, ticks: 50, gravity: 0, decay: 0.94, startVelocity: 30,
     colors: ['#FFE400', '#FFBD00', '#E89400', '#FFD700', '#FFA500'],

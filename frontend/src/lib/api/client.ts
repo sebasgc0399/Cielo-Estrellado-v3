@@ -1,4 +1,4 @@
-import { auth } from '@/lib/firebase/client'
+import { auth } from '@/lib/firebase/auth'
 
 export class ApiError extends Error {
   constructor(
@@ -36,7 +36,7 @@ export async function api<T = unknown>(
   if (!response.ok) {
     if (response.status === 401) {
       try {
-        const { auth } = await import('@/lib/firebase/client')
+        const { auth } = await import('@/lib/firebase/auth')
         if (auth.currentUser) {
           await auth.currentUser.getIdToken(true)
           const newToken = await auth.currentUser.getIdToken()

@@ -1,15 +1,16 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, lazy, Suspense } from 'react'
 import { useParams, useNavigate } from 'react-router'
 import { useRequireAuth } from '@/lib/auth/useRequireAuth'
 import { useSkyData } from '@/hooks/useSkyData'
 import { useSkyStars, type StarWithId } from '@/hooks/useSkyStars'
 import { SkyCanvas } from '@/components/sky/SkyCanvas'
 import { FloatingToolbar } from '@/components/sky/FloatingToolbar'
-import { StarOverlay } from '@/components/sky/StarOverlay'
-import { StarFormSheet } from '@/components/sky/StarFormSheet'
-import { SkySettingsSheet } from '@/components/sky/SkySettingsSheet'
-import { CollaboratorsSheet } from '@/components/sky/CollaboratorsSheet'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
+
+const StarOverlay = lazy(() => import('@/components/sky/StarOverlay').then(m => ({ default: m.StarOverlay })))
+const StarFormSheet = lazy(() => import('@/components/sky/StarFormSheet').then(m => ({ default: m.StarFormSheet })))
+const SkySettingsSheet = lazy(() => import('@/components/sky/SkySettingsSheet').then(m => ({ default: m.SkySettingsSheet })))
+const CollaboratorsSheet = lazy(() => import('@/components/sky/CollaboratorsSheet').then(m => ({ default: m.CollaboratorsSheet })))
 import { BlurFade } from '@/components/ui/blur-fade'
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api/client'
@@ -240,46 +241,56 @@ export function SkyPage() {
 
       {/* Star overlay (view details) */}
       {selectedStar && (
-        <StarOverlay
-          star={selectedStar}
-          role={role}
-          currentUserId={user.uid}
-          onClose={() => setSelectedStar(null)}
-          onEdit={() => handleEdit(selectedStar)}
-        />
+        <Suspense fallback={null}>
+          <StarOverlay
+            star={selectedStar}
+            role={role}
+            currentUserId={user.uid}
+            onClose={() => setSelectedStar(null)}
+            onEdit={() => handleEdit(selectedStar)}
+          />
+        </Suspense>
       )}
 
       {/* Star form sheet (create/edit) */}
       {formMode && (
-        <StarFormSheet
-          open
-          onOpenChange={(open) => { if (!open) handleFormSuccess() }}
-          skyId={skyId!}
-          mode={formMode}
-          star={formStar ?? undefined}
-          position={formPosition ?? undefined}
-          onSuccess={handleFormSuccess}
-        />
+        <Suspense fallback={null}>
+          <StarFormSheet
+            open
+            onOpenChange={(open) => { if (!open) handleFormSuccess() }}
+            skyId={skyId!}
+            mode={formMode}
+            star={formStar ?? undefined}
+            position={formPosition ?? undefined}
+            onSuccess={handleFormSuccess}
+          />
+        </Suspense>
       )}
 
       {/* Sky settings */}
-      <SkySettingsSheet
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-        sky={sky}
-        skyId={skyId!}
-        role={role}
-        onConfigChange={setSkyConfig}
-        onLeave={() => { toast.success('Has abandonado el cielo'); navigate('/skies') }}
-      />
+      {settingsOpen && (
+        <Suspense fallback={null}>
+          <SkySettingsSheet
+            open={settingsOpen}
+            onOpenChange={setSettingsOpen}
+            sky={sky}
+            skyId={skyId!}
+            role={role}
+            onConfigChange={setSkyConfig}
+            onLeave={() => { toast.success('Has abandonado el cielo'); navigate('/skies') }}
+          />
+        </Suspense>
+      )}
 
       {/* Collaborators (owner only) */}
-      {role === 'owner' && (
-        <CollaboratorsSheet
-          open={collaboratorsOpen}
-          onOpenChange={setCollaboratorsOpen}
-          skyId={skyId!}
-        />
+      {role === 'owner' && collaboratorsOpen && (
+        <Suspense fallback={null}>
+          <CollaboratorsSheet
+            open={collaboratorsOpen}
+            onOpenChange={setCollaboratorsOpen}
+            skyId={skyId!}
+          />
+        </Suspense>
       )}
     </div>
   )

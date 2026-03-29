@@ -13,7 +13,6 @@ import { BuyStardustSheet } from '@/components/shop/BuyStardustSheet'
 import { getShopItemsByCategory } from '@/domain/shopCatalog'
 import { getThemeDefinition } from '@/domain/themes'
 import { toast } from 'sonner'
-import confetti from 'canvas-confetti'
 import { ArrowLeft } from 'lucide-react'
 import { showStardustToast } from '@/components/economy/StardustToast'
 import type { ShopItem } from '@/domain/shopCatalog'
@@ -26,7 +25,8 @@ interface PaymentStatusResponse {
 
 const themeItems = getShopItemsByCategory('theme')
 
-function fireStarConfetti() {
+async function fireStarConfetti() {
+  const confetti = (await import('canvas-confetti')).default
   const defaults = {
     spread: 360, ticks: 50, gravity: 0, decay: 0.94, startVelocity: 30,
     colors: ['#FFE400', '#FFBD00', '#E89400', '#FFD700', '#FFA500'],

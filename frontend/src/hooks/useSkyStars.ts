@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
 import { useAuth } from '@/lib/auth/AuthContext'
-import { db } from '@/lib/firebase/client'
+import { db } from '@/lib/firebase/firestore'
 import type { StarRecord } from '@/domain/contracts'
 import type { UserStar } from '@/engine/SkyEngine'
 

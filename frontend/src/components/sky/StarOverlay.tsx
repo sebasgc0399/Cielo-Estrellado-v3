@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { ref, getDownloadURL } from 'firebase/storage'
-import { storage } from '@/lib/firebase/client'
+import { storage } from '@/lib/firebase/storage'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
