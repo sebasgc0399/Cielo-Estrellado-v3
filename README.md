@@ -452,6 +452,8 @@ El frontend se despliega como SPA en Firebase Hosting. Las rutas `/api/**` se re
 - [`SPEC.md`](SPEC.md) — Features base: cielos, estrellas, miembros, invitaciones, auth, SkyEngine
 - [`SPEC_v2.md`](SPEC_v2.md) — Economía (Polvo Estelar) y sistema de temas desbloqueables
 - [`SPEC_v3.md`](SPEC_v3.md) — Video clips, pagos Wompi, temas avanzados
+- [`SPEC_v4.md`](SPEC_v4.md) — Optimización de rendimiento frontend (PageSpeed 69→79)
+- [`SPEC_v5.md`](SPEC_v5.md) — HTTP Security Headers (CSP, X-Frame-Options, security.txt)
 - [`SPEC_Test.md`](SPEC_Test.md) — Guía de testing: fases, archivos, patrones de mocking
 - [`audits/`](audits/) — Auditorías de seguridad: Firestore rules, autenticación, pagos, atomicidad, validación de inputs, Storage uploads
 
