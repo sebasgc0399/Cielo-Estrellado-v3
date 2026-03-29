@@ -49,36 +49,44 @@ Los usuarios acumulan **Polvo Estelar** (✦) realizando acciones cotidianas —
 
 ```mermaid
 graph TD
-    subgraph Navegador["Navegador (SPA)"]
+    subgraph Navegador["🌐 Navegador (SPA)"]
         Pages["pages/"] --> Components["components/"]
-        Components --> Engine["engine/SkyEngine.ts\n(Canvas 5 capas)"]
         Pages --> Hooks["hooks/"]
+        Components --> Engine["engine/SkyEngine.ts\n(Canvas 5 capas)"]
         Hooks --> LibApi["lib/api"]
         Hooks --> LibFirebase["lib/firebase"]
     end
 
-    LibFirebase -- "onSnapshot (reads)" --> Firestore
-    LibApi -- "POST / PATCH / DELETE" --> CloudFn
-
-    subgraph Backend["Cloud Functions (Node 22)"]
-        CloudFn["api handler"] --> Handlers["handlers/"]
+    subgraph Backend["⚡ Cloud Functions (Node 22)"]
+        CloudFn["api handler"] --> Handlers["handlers/\nstars · skies · members\ninvites · economy · shop"]
         CloudFn --> Middleware["middleware/\nauth · cors"]
         CloudFn --> Domain["domain/\ncontracts · rules · catalog"]
+        ProcessVideo["processVideoClip\n(FFmpeg) trim · compress\n720p · thumbnail"]
         Cron["cleanupZombieStars\n⏱ cada 15 min"]
     end
 
-    subgraph Infra["Infraestructura Firebase"]
+    subgraph Infra["🔥 Infraestructura Firebase"]
         Firestore[("Firestore\nusers/ · skies/\ninvites/ · payments/")]
         Storage[("Cloud Storage\nstars/ · temp/")]
     end
 
+    subgraph Externo["🌍 Servicios Externos"]
+        Wompi["Wompi\n(pagos Colombia)"]
+    end
+
+    LibFirebase -. "onSnapshot\n(reads en tiempo real)" .-> Firestore
+    LibApi -- "POST / PATCH / DELETE" --> CloudFn
+
     Handlers --> Firestore
     Handlers --> Storage
-    Cron -- "reset mediaStatus\nstuck > 15 min" --> Firestore
+    Wompi -- "webhook\n(evento de pago)" --> Handlers
 
-    Storage -- "onObjectFinalized" --> ProcessVideo["processVideoClip\n(FFmpeg)\ntrim · compress 720p\nthumbnail"]
+    Storage -- "onObjectFinalized\n(upload a temp/)" --> ProcessVideo
     ProcessVideo --> Firestore
     ProcessVideo --> Storage
+
+    Cron -. "reset mediaStatus\nstuck > 15 min" .-> Firestore
+    Cron -. "cleanup temp/" .-> Storage
 ```
 
 > **Principio clave:** Los reads van directo desde el cliente via `onSnapshot` — la UI es reactiva en tiempo real. Los writes siempre pasan por Cloud Functions para garantizar seguridad, consistencia y atomicidad.
