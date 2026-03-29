@@ -1,156 +1,222 @@
 # Cielo Estrellado
 
-![Versión](https://img.shields.io/badge/versión-3.0.0-blueviolet)
-![Tests](https://img.shields.io/badge/tests-114%20pasando-brightgreen)
+![Versión](https://img.shields.io/badge/versión-5.0.0-blueviolet)
 ![Node](https://img.shields.io/badge/node-22-339933)
-![Firebase](https://img.shields.io/badge/firebase-12-FFCA28)
 ![React](https://img.shields.io/badge/react-19-61DAFB)
 ![TypeScript](https://img.shields.io/badge/typescript-strict-3178C6)
+![Firebase](https://img.shields.io/badge/firebase-12-FFCA28)
+![Vite](https://img.shields.io/badge/vite-6-646CFF)
+![Tailwind](https://img.shields.io/badge/tailwind-4-06B6D4)
 
 Una aplicación web donde los recuerdos se convierten en estrellas.
 
 ---
 
-## ¿Qué es Cielo Estrellado?
+## Qué es Cielo Estrellado
 
-Cielo Estrellado es una SPA inmersiva donde los usuarios crean **cielos personalizados** llenos de estrellas. Cada estrella guarda un recuerdo: título, mensaje, imagen y año. Los cielos se comparten con otros usuarios mediante invitaciones por link, con roles diferenciados (editor / espectador). La experiencia visual es el centro: un canvas animado con paralaje, nebulosas, estrellas titilantes y estrellas fugaces.
+Cielo Estrellado es una SPA inmersiva donde los usuarios crean **cielos personalizados** llenos de estrellas. Cada estrella guarda un recuerdo: título, mensaje, imagen o video clip (1–6 segundos), y un año. Los cielos se comparten con otros usuarios mediante invitaciones por link, con roles diferenciados (owner / editor / viewer).
 
-Los usuarios acumulan **Polvo Estelar** (✦) realizando acciones — logins diarios, rachas, crear estrellas — y con ese balance desbloquean temas visuales premium para sus cielos en la tienda integrada.
+La experiencia visual es el centro: un canvas animado con paralaje, nebulosas, estrellas titilantes y estrellas fugaces, personalizable con **14 temas visuales** — desde Aurora Boreal hasta Corazones Celestiales.
 
----
-
-## Demo
-
-> Agrega aquí una captura de pantalla o GIF del cielo animado.
-> Ejemplo: `![Demo](docs/screenshot.png)`
-
----
-
-## Features principales
-
-**Cielos y estrellas**
-- Crea cielos con nombre y tema visual personalizable
-- Añade estrellas con título, mensaje, imagen y año del recuerdo
-- Canvas animado en tiempo real con paralaje, nebulosas y efectos visuales
-- Soft-delete de estrellas (recuperable)
-
-**Compartir y colaborar**
-- Invita usuarios por link (válido 7 días) con rol editor o espectador
-- Gestión de miembros desde el propio cielo
-- Preview de invitación pública sin necesidad de login
-
-**Economía — Polvo Estelar (✦)**
-- Gana Polvo Estelar con acciones cotidianas (login, crear estrellas, rachas)
-- Tienda de temas premium con transacciones atómicas
-- Historial de transacciones por usuario
-
-**Temas visuales**
-- 8 temas disponibles (1 clásico gratuito + 7 premium)
-- Colores parametrizados en el engine — sin recargar, instantáneo
-
-**Técnico**
-- Reads en tiempo real via `onSnapshot` — la UI se actualiza sola
-- Todos los writes pasan por Cloud Functions — seguridad y consistencia
-- TypeScript strict end-to-end, frontend y backend
+Los usuarios acumulan **Polvo Estelar** (✦) realizando acciones cotidianas — logins diarios, rachas, crear estrellas, aceptar invitaciones — y con ese balance desbloquean temas premium en la tienda integrada. También pueden comprar Polvo Estelar con dinero real (COP) a través de **Wompi**.
 
 ---
 
 ## Tech Stack
 
-| Capa | Tecnología |
-|------|-----------|
-| **Frontend** | React 19, Vite 6, TypeScript strict |
-| **Estilos** | Tailwind CSS v4, shadcn/ui, Magic UI, Motion (Framer Motion) |
-| **Routing** | React Router v7 |
-| **UI / UX** | Sonner (toasts), next-themes, lucide-react, Geist font |
-| **Firebase (cliente)** | Firebase SDK v12 — Firestore, Storage, Auth |
-| **Backend** | Cloud Functions v2 gen2, Node.js 22 |
-| **Firebase (admin)** | Firebase Admin SDK v13 |
-| **Infraestructura** | Firebase Hosting, Firestore, Cloud Storage |
-| **Tests** | Vitest 4.1.1, Testing Library (frontend y functions) |
+| Capa | Tecnología | Versión |
+|------|-----------|---------|
+| **Framework** | React | 19.2 |
+| **Build** | Vite | 6.4 |
+| **Lenguaje** | TypeScript (strict) | 5.9 |
+| **Estilos** | Tailwind CSS | 4.2 |
+| **Componentes UI** | shadcn/ui, Magic UI | — |
+| **Animaciones** | Motion (Framer Motion) | 12.38 |
+| **Routing** | React Router | 7.13 |
+| **Iconos** | Lucide React | 0.577 |
+| **Toasts** | Sonner | 2.0 |
+| **Firebase (cliente)** | Firebase SDK | 12.11 |
+| **Backend** | Cloud Functions v2 gen2 | 7.2 |
+| **Firebase (admin)** | Firebase Admin SDK | 13.7 |
+| **Video processing** | FFmpeg (@ffmpeg-installer) | 1.1 |
+| **Pagos** | Wompi (Bancolombia) | — |
+| **Tests** | Vitest + Testing Library | 4.1 |
+| **PWA** | vite-plugin-pwa | 1.2 |
 
 ---
 
 ## Arquitectura
 
-```mermaid
-graph TD
-    Browser["Navegador (SPA)"]
-    subgraph Frontend
-        Pages["pages/ — Composición y routing"]
-        Components["components/ — UI por feature"]
-        Hooks["hooks/ — Lógica reactiva"]
-        Lib["lib/ — Firebase, Auth, API client"]
-        Domain["domain/ — Tipos, economía, temas, catálogo"]
-        Engine["engine/ — SkyEngine.ts (Canvas puro)"]
-    end
-    subgraph Backend ["Cloud Functions (Node 22)"]
-        Handlers["handlers/ — Lógica de negocio"]
-        LibBE["lib/ — Helpers Firestore"]
-        Middleware["middleware/ — Auth, CORS"]
-        DomainBE["domain/ — Contratos (espejo frontend)"]
-    end
-    Firestore[("Firestore")]
-    Storage[("Cloud Storage")]
-
-    Browser --> Pages
-    Pages --> Components
-    Pages --> Hooks
-    Hooks --> Lib
-    Lib --> Firestore
-    Components --> Engine
-    Lib --> Backend
-    Backend --> Firestore
-    Backend --> Storage
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Navegador (SPA)                          │
+│                                                                 │
+│  pages/ ──► components/ ──► engine/SkyEngine.ts (Canvas 5 capas)│
+│    │            │                                               │
+│    └──► hooks/ ──► lib/api ──────────────────┐                  │
+│                    lib/firebase ──┐           │                  │
+│                                  │           │                  │
+│                          onSnapshot (reads)  │ POST/PATCH/DELETE│
+└──────────────────────────────────┼───────────┼──────────────────┘
+                                   │           │
+                                   ▼           ▼
+                            ┌─────────┐  ┌───────────┐
+                            │Firestore│  │ Cloud Fn   │
+                            │         │  │ (API)      │
+                            │ users/  │◄─┤ handlers/  │
+                            │ skies/  │  │ middleware/ │
+                            │ invites/│  │ domain/    │
+                            │payments/│  └─────┬──────┘
+                            └─────────┘        │
+                                               ▼
+                                        ┌─────────────┐
+                                        │Cloud Storage │
+                                        │              │
+                                        │ stars/       │──► onObjectFinalized
+                                        │ temp/        │         │
+                                        └──────────────┘         ▼
+                                                          ┌──────────────┐
+                                                          │processVideo  │
+                                                          │Clip (FFmpeg) │
+                                                          │ trim+compress│
+                                                          │ thumbnail    │
+                                                          └──────────────┘
 ```
 
-**Principio clave:** Los reads (cielos, estrellas, balance) van directo desde el cliente via `onSnapshot` — la UI es reactiva en tiempo real. Los writes (crear estrella, comprar tema, aceptar invitación) siempre pasan por Cloud Functions para garantizar seguridad, consistencia y atomicidad.
+**Principio clave:** Los reads van directo desde el cliente via `onSnapshot` — la UI es reactiva en tiempo real. Los writes siempre pasan por Cloud Functions para garantizar seguridad, consistencia y atomicidad.
 
 ---
 
-## Requisitos previos
+## Features principales
 
-- **Node.js** v22 o superior
-- **Firebase CLI** instalado globalmente: `npm install -g firebase-tools`
-- Cuenta de Firebase con un proyecto creado
-- Java (para emuladores de Firestore, opcional para desarrollo local)
+### Estrellas con media
+
+- Título, mensaje, año del recuerdo
+- Imagen (JPEG/PNG/WebP, hasta 5 MB)
+- Video clip (1–6 segundos): el usuario recorta con VideoTrimmer en el cliente, sube el raw a Storage, y una Cloud Function lo procesa con FFmpeg (trim, compress a 720p, thumbnail)
+- Posición personalizada en el canvas (coordenadas normalizadas 0–1)
+
+### Cielos compartidos
+
+- Cada usuario puede crear hasta 2 cielos (ampliable comprando sky-slots)
+- Personalización: densidad de estrellas, nebulosa, twinkle, estrellas fugaces
+- 14 temas visuales con colores y efectos únicos (luciérnagas, meteoros, constelaciones, formas de estrella)
+
+### Sistema de invitaciones
+
+- Invitaciones por link con token SHA-256 (válidas 7 días, TTL en Firestore)
+- Roles: editor (CRUD de sus estrellas) o viewer (solo lectura)
+- Preview público sin login, aceptación requiere cuenta
+- Rate limits: máx 10 invitaciones pendientes por cielo, máx 50 miembros por cielo
+
+### Economía — Polvo Estelar (✦)
+
+| Acción | Recompensa |
+|--------|:----------:|
+| Bienvenida (registro) | +150 ✦ |
+| Login diario | +15 ✦ |
+| Bonus semanal | +20 ✦ |
+| Crear estrella | +5 ✦ (máx 10/día) |
+| Primera estrella | +25 ✦ |
+| Invitación aceptada | +30 ✦ (máx 5/día) |
+| Racha 7 días | +50 ✦ |
+| Racha 30 días | +350 ✦ |
+
+### Tienda de temas
+
+14 temas disponibles (1 clásico gratuito + 13 premium, de 600 a 1500 ✦). Algunos incluyen efectos especiales: lluvia de meteoros, luciérnagas, líneas de constelación, estrellas con forma de flor/cristal/corazón.
+
+Compras con transacciones Firestore atómicas (débito + inventario + audit log).
+
+### Pagos con Wompi
+
+Compra de paquetes de Polvo Estelar con dinero real (COP) via Nequi, PSE o tarjeta:
+
+| Paquete | Polvo Estelar | Precio COP |
+|---------|:-------------:|:----------:|
+| pack-500 | 500 ✦ | $5.000 |
+| pack-1500 | 1.375 ✦ | $12.000 |
+| pack-3500 | 3.000 ✦ | $25.000 |
+| pack-8000 | 7.000 ✦ | $50.000 |
+| pack-20000 | 18.000 ✦ | $99.000 |
+
+Flujo seguro: Cloud Function crea transacción → Wompi procesa → webhook valida firma SHA-256 → acredita PE atómicamente. Nunca se acredita desde el cliente.
 
 ---
 
-## Instalación y setup
+## Estructura del proyecto
+
+```
+cielo-estrellado-v3/
+├── frontend/
+│   └── src/
+│       ├── components/
+│       │   ├── sky/            # SkyCanvas, StarFormSheet, StarOverlay, VideoTrimmer, FloatingToolbar
+│       │   ├── economy/        # StardustBalance, DailyRewardModal, StreakIndicator, TransactionHistory
+│       │   ├── shop/           # BuyStardustSheet, ThemePreviewCard, PackageCard
+│       │   └── ui/             # shadcn/ui + componentes custom (BottomSheet, BlurFade, ShimmerButton)
+│       ├── domain/             # Contratos, temas, catálogo, policies (compartido con backend)
+│       ├── engine/             # SkyEngine.ts — renderizado canvas puro (5 capas, paralaje, efectos)
+│       ├── hooks/              # useSkyData, useSkyStars, useUserEconomy
+│       ├── lib/
+│       │   ├── api/            # Cliente API con auto-refresh de token
+│       │   ├── auth/           # AuthContext, Google + email/password
+│       │   └── firebase/       # Config, storage (upload imagen/video)
+│       ├── pages/              # LoginPage, SkiesPage, SkyPage, ShopPage, ProfilePage, InvitePage
+│       └── styles/             # globals.css (design tokens, animaciones custom)
+│
+├── functions/
+│   └── src/
+│       ├── handlers/           # HTTP handlers + Cloud Function triggers
+│       │   ├── stars.ts, skies.ts, members.ts, invites.ts, invitePublic.ts
+│       │   ├── economy.ts, shop.ts, payments.ts, userSync.ts
+│       │   ├── processVideoClip.ts   # Storage trigger — FFmpeg trim+compress
+│       │   └── cleanupZombieStars.ts # Scheduled — limpia videos stuck cada 15 min
+│       ├── middleware/         # authenticateRequest (checkRevoked), CORS
+│       ├── domain/             # contracts, economyRules, policies, shopCatalog, stardustPackages, defaults
+│       ├── lib/                # firebaseAdmin, getSkyWithAccess, invite utils, ffmpeg wrapper
+│       └── router.ts           # Router HTTP simple con path params
+│
+├── firestore.rules             # Reads limitados, writes bloqueados (solo Admin SDK)
+├── storage.rules               # Permisos por tipo de contenido, size/type validation
+├── firestore.indexes.json      # 7 índices compuestos
+├── firebase.json               # Hosting config, rewrites /api → Cloud Function
+└── audits/                     # Auditorías de seguridad detalladas
+```
+
+---
+
+## Setup local
+
+### Prerequisites
+
+- **Node.js** v22+
+- **Firebase CLI**: `npm install -g firebase-tools`
+- Cuenta de Firebase con proyecto creado
+
+### Instalación
 
 ```bash
-# 1. Clonar el repositorio
+# Clonar
 git clone <url-del-repo>
 cd cielo-estrellado-v3
 
-# 2. Instalar dependencias del frontend
+# Instalar dependencias
 cd frontend && npm install && cd ..
-
-# 3. Instalar dependencias de functions
 cd functions && npm install && cd ..
 
-# 4. Autenticarse con Firebase
+# Autenticarse con Firebase
 firebase login
+firebase use masmelito-f209c  # o tu proyecto
 
-# 5. Configurar el proyecto Firebase
-firebase use masmelito-f209c
-# o con tu propio proyecto:
-firebase use <tu-project-id>
-
-# 6. Crear el archivo de variables de entorno del frontend
+# Configurar variables de entorno del frontend
 cp frontend/.env.example frontend/.env.local
-# Edita .env.local con los datos de tu proyecto Firebase (ver sección siguiente)
-
-# 7. Iniciar el servidor de desarrollo
-cd frontend && npm run dev
+# Editar con los datos de Firebase Console → Configuración → SDK
 ```
 
----
+### Variables de entorno
 
-## Variables de entorno
-
-Crea el archivo `frontend/.env.local` con las variables de tu proyecto Firebase:
+**Frontend** (`frontend/.env.local`):
 
 ```env
 VITE_FIREBASE_API_KEY=tu-api-key
@@ -161,130 +227,199 @@ VITE_FIREBASE_MESSAGING_SENDER_ID=tu-sender-id
 VITE_FIREBASE_APP_ID=tu-app-id
 ```
 
-Puedes encontrar estos valores en la consola de Firebase → Configuración del proyecto → Tus apps → SDK setup and configuration.
+**Backend** (`functions/.env`):
+
+```env
+APP_URL=https://tu-app.web.app
+WOMPI_PUBLIC_KEY=pub_...
+WOMPI_PRIVATE_KEY=prv_...
+WOMPI_EVENTS_SECRET=...
+WOMPI_INTEGRITY_SECRET=...
+WOMPI_API_URL=https://api-sandbox.co.uat.wompi.dev/v1
+```
 
 ---
 
-## Comandos de desarrollo
+## Scripts disponibles
 
-```bash
-# Frontend — servidor de desarrollo (proxy /api → producción)
-cd frontend && npm run dev
+### Frontend
 
-# Frontend — build de producción
-cd frontend && npm run build
+| Comando | Descripción |
+|---------|-------------|
+| `npm run dev` | Dev server (proxy /api → producción) |
+| `npm run build` | Build de producción (tsc + vite build) |
+| `npm run test` | Tests en modo watch |
+| `npm run test:run` | Tests single run (CI) |
+| `npm run test:coverage` | Tests con reporte de cobertura |
 
-# Frontend — tests en modo watch
-cd frontend && npm run test
+### Backend (functions)
 
-# Frontend — tests single run (CI)
-cd frontend && npm run test:run
+| Comando | Descripción |
+|---------|-------------|
+| `npm run build` | Compilar TypeScript |
+| `npm run serve` | Emuladores Firebase |
+| `npm run test` | Tests en modo watch |
+| `npm run test:run` | Tests single run (CI) |
+| `npm run test:coverage` | Tests con reporte de cobertura |
 
-# Functions — compilar TypeScript
-cd functions && npm run build
+---
 
-# Functions — tests en modo watch
-cd functions && npm run test
+## API endpoints
 
-# Functions — tests single run (CI)
-cd functions && npm run test:run
-```
+Todos los endpoints están bajo `/api`. Auth = token Firebase en header `Authorization: Bearer <token>`.
+
+### User
+
+| Método | Ruta | Descripción | Auth |
+|--------|------|-------------|:----:|
+| POST | `/userSync` | Sincroniza usuario Firebase con Firestore (welcome bonus en primer login) | Si |
+
+### Economy
+
+| Método | Ruta | Descripción | Auth |
+|--------|------|-------------|:----:|
+| GET | `/user/economy` | Obtiene balance, racha, rewards diarios (side-effect: calcula y otorga rewards) | Si |
+| GET | `/user/transactions` | Historial de transacciones (paginado con cursor) | Si |
+
+### Shop
+
+| Método | Ruta | Descripción | Auth |
+|--------|------|-------------|:----:|
+| GET | `/shop/catalog` | Catálogo completo con flag `owned` por item | Si |
+| POST | `/shop/purchase` | Compra item con stardust (transacción atómica) | Si |
+
+### Payments (Wompi)
+
+| Método | Ruta | Descripción | Auth |
+|--------|------|-------------|:----:|
+| POST | `/payments/create` | Inicia pago en Wompi, retorna signature para checkout | Si |
+| POST | `/payments/webhook` | Webhook de Wompi (valida firma SHA-256, acredita PE) | No |
+| GET | `/payments/:reference/status` | Estado de un pago | Si |
+
+### Skies
+
+| Método | Ruta | Descripción | Auth |
+|--------|------|-------------|:----:|
+| GET | `/skies` | Lista cielos del usuario (como owner, editor o viewer) | Si |
+| POST | `/skies` | Crea nuevo cielo | Si |
+| GET | `/skies/:skyId` | Obtiene cielo + rol del usuario | Si |
+| PATCH | `/skies/:skyId` | Actualiza título o personalización (owner) | Si |
+| DELETE | `/skies/:skyId` | Elimina cielo + miembros + estrellas + media (owner) | Si |
+| PATCH | `/skies/:skyId/theme` | Cambia tema visual del cielo (owner, requiere item en inventario) | Si |
+
+### Stars
+
+| Método | Ruta | Descripción | Auth |
+|--------|------|-------------|:----:|
+| POST | `/skies/:skyId/stars` | Crea estrella (owner/editor, otorga rewards) | Si |
+| PATCH | `/skies/:skyId/stars/:starId` | Actualiza estrella (owner o editor+autor) | Si |
+| DELETE | `/skies/:skyId/stars/:starId` | Soft-delete estrella + limpia media de Storage | Si |
+
+### Members
+
+| Método | Ruta | Descripción | Auth |
+|--------|------|-------------|:----:|
+| GET | `/skies/:skyId/members` | Lista miembros activos (owner) | Si |
+| PATCH | `/skies/:skyId/members/:userId` | Cambia rol o revoca miembro (owner) | Si |
+| POST | `/skies/:skyId/members/leave` | Abandonar cielo (no owner) | Si |
+
+### Invites
+
+| Método | Ruta | Descripción | Auth |
+|--------|------|-------------|:----:|
+| POST | `/skies/:skyId/invites` | Crea invitación con token (owner, máx 10 pendientes) | Si |
+| GET | `/skies/:skyId/invites` | Lista invitaciones pendientes (owner) | Si |
+| DELETE | `/skies/:skyId/invites/:inviteId` | Revoca invitación (owner) | Si |
+| GET | `/invites/:token/preview` | Preview público de invitación | No |
+| POST | `/invites/:token/accept` | Acepta invitación y une al cielo (reward best-effort) | Si |
+
+### Cloud Functions (event-driven)
+
+| Trigger | Función | Descripción |
+|---------|---------|-------------|
+| `onObjectFinalized` (Storage) | `processVideoClip` | Procesa video raw: trim + compress FFmpeg (720p, H.264), genera thumbnail. 2 GiB RAM, 300s timeout |
+| `onSchedule` (cada 15 min) | `cleanupZombieStars` | Resetea estrellas stuck en `mediaStatus: "processing"` por más de 15 minutos |
 
 ---
 
 ## Modelo de datos
 
-| Colección | Documento | Campos principales |
-|-----------|-----------|-------------------|
-| `users/{uid}` | `UserRecord` | `displayName`, `email`, `stardustBalance`, `streakCount`, `lastLoginDate`, `skyLimit` |
-| `users/{uid}/inventory/{itemId}` | `InventoryItem` | `itemId`, `type` (`theme` \| `sky-slot`), `unlockedAt` |
-| `users/{uid}/transactions/{txId}` | `TransactionRecord` | `amount`, `reason`, `timestamp`, `balanceAfter` |
-| `skies/{skyId}` | `SkyRecord` | `title`, `themeId`, `ownerId`, `createdAt`, `customization` |
-| `skies/{skyId}/members/{uid}` | `MemberRecord` | `role` (`owner` \| `editor` \| `viewer`), `status`, `joinedAt` |
-| `skies/{skyId}/stars/{starId}` | `StarRecord` | `title`, `message`, `imageUrl`, `year`, `position`, `deleted` |
-| `invites/{inviteId}` | `InviteRecord` | `tokenHash`, `skyId`, `role`, `status`, `expiresAt` (7 días), `createdBy` |
+### Firestore
+
+| Colección | Campos principales |
+|-----------|-------------------|
+| `users/{uid}` | `displayName`, `email`, `stardust`, `maxSkies`, `maxMemberships`, `loginStreak`, `lastDailyRewardDate`, `createdStarsToday`, `videoProcessedToday` |
+| `users/{uid}/inventory/{itemId}` | `itemId`, `category` (theme / sky-slot), `purchasedAt`, `source` |
+| `users/{uid}/transactions/{txId}` | `type` (earn / spend), `amount`, `reason`, `balanceAfter`, `details` |
+| `skies/{skyId}` | `title`, `ownerUserId`, `themeId`, `personalization` (density, nebula, twinkle, shootingStars), `privacy` |
+| `skies/{skyId}/stars/{starId}` | `title`, `message`, `mediaType` (image/video), `mediaStatus` (processing/ready/error), `mediaPath`, `thumbnailPath`, `xNormalized`, `yNormalized`, `year`, `authorUserId`, `deletedAt` |
+| `skies/{skyId}/members/{memberId}` | `userId`, `role` (owner/editor/viewer), `status` (active/revoked), `joinedAt` |
+| `invites/{inviteId}` | `skyId`, `role`, `tokenHash` (SHA-256), `status` (pending/accepted/revoked), `expiresAt` (TTL 7 días) |
+| `payments/{paymentId}` | `userId`, `packageId`, `amountInCents`, `currency` (COP), `stardustAmount`, `wompiReference`, `status` (pending/approved/declined/error/voided) |
 
 ---
 
-## Sistema de economía — Polvo Estelar (✦)
+## Sistema de seguridad
 
-**Recompensas**
+### Modelo de escritura
 
-| Acción | Polvo Estelar |
-|--------|:-------------:|
-| Bienvenida (registro) | +100 ✦ |
-| Login diario | +10 ✦ |
-| Crear estrella | +5 ✦ |
-| Primera estrella de un cielo | +25 ✦ |
-| Aceptar invitación | +30 ✦ |
-| Bono semanal | +20 ✦ |
-| Racha 7 días | +50 ✦ |
-| Racha 30 días | +200 ✦ |
+- **Todas las escrituras** ocurren via Cloud Functions (Admin SDK). Las Firestore rules bloquean writes directos del cliente.
+- **Reads directos** solo permitidos para `skies/{skyId}/stars/{starId}` (miembros activos). Todo lo demás se lee a través de Cloud Functions.
 
-**Límites diarios**
-- Máx. 10 estrellas recompensadas por día
-- Máx. 5 recompensas de invitación por día
+### Autenticación
 
-**Tienda**
-- 7 temas premium (600–800 ✦)
-- Sky-slot extra: 500 ✦
+- Cada request protegido pasa por `authenticateRequest()`: verifica Firebase ID token con `checkRevoked: true`.
+- CORS whitelistado: solo `localhost:5173` (dev) y `APP_URL` (prod).
 
-Todos los grants ocurren en Cloud Functions. El cliente solo lee el balance. Las compras son transacciones Firestore atómicas (débito + inventario + log en una sola operación).
+### Storage
 
----
+- **Imágenes**: máx 5 MB, solo JPEG/PNG/WebP. Upload solo si la estrella no tiene media.
+- **Videos raw** (`temp/`): máx 50 MB, solo MP4/WebM/MOV. Solo create, no read.
+- **Videos procesados** (`stars/`): solo lectura para miembros. Escritura exclusiva de Cloud Function.
+- Catch-all: cualquier path no listado → bloqueado.
 
-## Temas visuales
+### Rate limits
 
-| Tema | Descripción | Precio |
-|------|-------------|:------:|
-| **Classic** | Fondo oscuro clásico, blanco y azul | Gratis |
-| **Aurora Boreal** | Verde esmeralda y cian luminoso | 800 ✦ |
-| **Horizonte Atardecer** | Naranja cálido y ámbar dorado | 800 ✦ |
-| **Cosmos Púrpura** | Púrpura profundo y magenta | 800 ✦ |
-| **Jardín de Rosas** | Rosa suave y malva delicado | 600 ✦ |
-| **Profundidades del Océano** | Teal oscuro y cian marino | 800 ✦ |
-| **Noche Dorada** | Oro cálido y ámbar brillante | 800 ✦ |
-| **Cristal de Hielo** | Blanco frío y azul pálido | 600 ✦ |
-
-El SkyEngine recibe `ThemeParams` (colores parametrizados), no IDs. La resolución `themeId → ThemeParams` es client-side y estática — sin roundtrip al servidor.
+| Recurso | Límite |
+|---------|--------|
+| Estrellas recompensadas por día | 10 |
+| Invitaciones recompensadas por día | 5 |
+| Videos procesados por día | 5 |
+| Invitaciones pendientes por cielo | 10 |
+| Miembros por cielo | 50 |
+| Pagos pendientes concurrentes | 5 |
 
 ---
 
-## Testing
+## Tests
 
-**Ejecutar tests**
+Los tests viven al lado del código que prueban: `economy.ts` → `economy.test.ts`.
 
 ```bash
 # Frontend
 cd frontend && npm run test:run
 
-# Functions
+# Backend
 cd functions && npm run test:run
+
+# Con cobertura
+cd frontend && npm run test:coverage
+cd functions && npm run test:coverage
 ```
 
-**Estructura**
-- Los tests viven al lado del código que prueban: `economy.ts` → `economy.test.ts`
-- 114 tests en verde (frontend + functions)
+**Patrones de testing:**
 
-**Patrones de mocking**
+- **Backend**: `vi.hoisted()` + `vi.mock()` para Firebase Admin, `authenticateRequest`, Storage. `mockReset()` en `beforeEach`.
+- **Frontend**: `vi.mock()` para `api()`, `useAuth()`. `@testing-library/react` para hooks y componentes. `jsdom` como environment.
+- **Principio**: Los tests describen *qué* debe ocurrir, no *cómo* se implementa.
 
-```typescript
-// Backend: vi.hoisted() + vi.mock() para firebaseAdmin y authenticateRequest
-// mockReset() en beforeEach para evitar contaminación entre tests
-
-// Frontend: vi.mock() para api() y useAuth()
-// @testing-library/react para hooks y componentes
-```
-
-**Principio:** Los tests describen *qué* debe ocurrir, no *cómo* se implementa. No se mockea la base de datos en tests de integración.
-
-Consulta [`SPEC_Test.md`](SPEC_Test.md) para la guía completa: fases, archivos específicos y patrones de mocking detallados.
+Consultar [`SPEC_Test.md`](SPEC_Test.md) para la guía completa de testing.
 
 ---
 
 ## Deploy
 
-Siempre correr los tests antes de desplegar.
+Siempre correr tests antes de desplegar.
 
 ```bash
 # Solo functions
@@ -293,31 +428,26 @@ cd functions && npm run test:run && npm run build && cd .. && firebase deploy --
 # Solo hosting (frontend)
 cd frontend && npm run test:run && npm run build && cd .. && firebase deploy --only hosting
 
+# Solo reglas y índices
+firebase deploy --only firestore:rules,firestore:indexes,storage
+
 # Todo junto
 cd functions && npm run test:run && npm run build && cd ..
 cd frontend && npm run test:run && npm run build && cd ..
 firebase deploy
 ```
 
-El frontend se despliega como SPA en Firebase Hosting. Las rutas `/api/**` son reescritas a la Cloud Function `api`. Todas las demás rutas apuntan a `index.html` para el routing del lado del cliente.
+El frontend se despliega como SPA en Firebase Hosting. Las rutas `/api/**` se reescriben a la Cloud Function `api`. Todas las demás rutas sirven `index.html` para routing client-side. Assets versionados cachean 1 año.
 
 ---
 
-## Estado del proyecto / Roadmap
-
-| Fase | Descripción | Estado |
-|------|-------------|--------|
-| **Fase 1 — Core** | Cielos, estrellas, miembros, invitaciones, auth, SkyEngine | ✅ Completada |
-| **Fase 2 — Economía y temas** | Polvo Estelar, tienda, 8 temas visuales, 114 tests | ✅ Completada |
-| **Fase 3 — Pagos reales y temas avanzados** | Integración de pagos reales, temas adicionales | 🔜 Próximo |
-
----
-
-## Especificaciones técnicas
+## Documentación adicional
 
 - [`SPEC.md`](SPEC.md) — Features base: cielos, estrellas, miembros, invitaciones, auth, SkyEngine
 - [`SPEC_v2.md`](SPEC_v2.md) — Economía (Polvo Estelar) y sistema de temas desbloqueables
-- [`SPEC_Test.md`](SPEC_Test.md) — Guía de testing: fases, archivos, tests, patrones de mocking
+- [`SPEC_v3.md`](SPEC_v3.md) — Video clips, pagos Wompi, temas avanzados
+- [`SPEC_Test.md`](SPEC_Test.md) — Guía de testing: fases, archivos, patrones de mocking
+- [`audits/`](audits/) — Auditorías de seguridad: Firestore rules, autenticación, pagos, atomicidad, validación de inputs, Storage uploads
 
 ---
 
