@@ -47,43 +47,41 @@ Los usuarios acumulan **Polvo Estelar** (✦) realizando acciones cotidianas —
 
 ## Arquitectura
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Navegador (SPA)                          │
-│                                                                 │
-│  pages/ ──► components/ ──► engine/SkyEngine.ts (Canvas 5 capas)│
-│    │            │                                               │
-│    └──► hooks/ ──► lib/api ──────────────────┐                  │
-│                    lib/firebase ──┐           │                  │
-│                                  │           │                  │
-│                          onSnapshot (reads)  │ POST/PATCH/DELETE│
-└──────────────────────────────────┼───────────┼──────────────────┘
-                                   │           │
-                                   ▼           ▼
-                            ┌─────────┐  ┌───────────┐
-                            │Firestore│  │ Cloud Fn   │
-                            │         │  │ (API)      │
-                            │ users/  │◄─┤ handlers/  │
-                            │ skies/  │  │ middleware/ │
-                            │ invites/│  │ domain/    │
-                            │payments/│  └─────┬──────┘
-                            └─────────┘        │
-                                               ▼
-                                        ┌─────────────┐
-                                        │Cloud Storage │
-                                        │              │
-                                        │ stars/       │──► onObjectFinalized
-                                        │ temp/        │         │
-                                        └──────────────┘         ▼
-                                                          ┌──────────────┐
-                                                          │processVideo  │
-                                                          │Clip (FFmpeg) │
-                                                          │ trim+compress│
-                                                          │ thumbnail    │
-                                                          └──────────────┘
+```mermaid
+graph TD
+    subgraph Navegador["Navegador (SPA)"]
+        Pages["pages/"] --> Components["components/"]
+        Components --> Engine["engine/SkyEngine.ts\n(Canvas 5 capas)"]
+        Pages --> Hooks["hooks/"]
+        Hooks --> LibApi["lib/api"]
+        Hooks --> LibFirebase["lib/firebase"]
+    end
+
+    LibFirebase -- "onSnapshot (reads)" --> Firestore
+    LibApi -- "POST / PATCH / DELETE" --> CloudFn
+
+    subgraph Backend["Cloud Functions (Node 22)"]
+        CloudFn["api handler"] --> Handlers["handlers/"]
+        CloudFn --> Middleware["middleware/\nauth · cors"]
+        CloudFn --> Domain["domain/\ncontracts · rules · catalog"]
+        Cron["cleanupZombieStars\n⏱ cada 15 min"]
+    end
+
+    subgraph Infra["Infraestructura Firebase"]
+        Firestore[("Firestore\nusers/ · skies/\ninvites/ · payments/")]
+        Storage[("Cloud Storage\nstars/ · temp/")]
+    end
+
+    Handlers --> Firestore
+    Handlers --> Storage
+    Cron -- "reset mediaStatus\nstuck > 15 min" --> Firestore
+
+    Storage -- "onObjectFinalized" --> ProcessVideo["processVideoClip\n(FFmpeg)\ntrim · compress 720p\nthumbnail"]
+    ProcessVideo --> Firestore
+    ProcessVideo --> Storage
 ```
 
-**Principio clave:** Los reads van directo desde el cliente via `onSnapshot` — la UI es reactiva en tiempo real. Los writes siempre pasan por Cloud Functions para garantizar seguridad, consistencia y atomicidad.
+> **Principio clave:** Los reads van directo desde el cliente via `onSnapshot` — la UI es reactiva en tiempo real. Los writes siempre pasan por Cloud Functions para garantizar seguridad, consistencia y atomicidad.
 
 ---
 
