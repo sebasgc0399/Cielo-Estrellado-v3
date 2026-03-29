@@ -1,0 +1,4 @@
+Contact: mailto:sebasgc0399@gmail.com
+Preferred-Languages: es, en
+Canonical: https://cielo-estrellado-web.web.app/.well-known/security.txt
+Expires: 2027-03-29T00:00:00.000Z
