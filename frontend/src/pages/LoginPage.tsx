@@ -65,6 +65,7 @@ export function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
 
   const redirectTo = searchParams.get('redirect') || '/skies'
 
@@ -78,10 +79,12 @@ export function LoginPage() {
   // Avoid flash while checking auth state
   if (loading || user) return null
 
+  const termsVersion = '2026-03-29'
+
   const handleGoogleSignIn = async () => {
     try {
       setSubmitting(true)
-      await signInWithGoogle()
+      await signInWithGoogle(isRegister ? termsVersion : undefined)
       navigate(redirectTo, { replace: true })
     } catch (err) {
       toast.error(getAuthErrorMessage(err, false))
@@ -95,7 +98,7 @@ export function LoginPage() {
     setSubmitting(true)
     try {
       if (isRegister) {
-        await signUpWithEmail(email, password)
+        await signUpWithEmail(email, password, termsVersion)
       } else {
         await signInWithEmail(email, password)
       }
@@ -156,7 +159,7 @@ export function LoginPage() {
                 size="lg"
                 className="h-11 w-full gap-2.5 text-sm font-normal tracking-wide"
                 onClick={handleGoogleSignIn}
-                disabled={submitting}
+                disabled={submitting || (isRegister && !acceptedTerms)}
               >
                 <GoogleIcon />
                 Continuar con Google
@@ -221,11 +224,51 @@ export function LoginPage() {
                   />
                 </div>
 
+                {isRegister && (
+                  <div className="flex items-start gap-2.5">
+                    <input
+                      type="checkbox"
+                      id="terms"
+                      checked={acceptedTerms}
+                      onChange={(e) => setAcceptedTerms(e.target.checked)}
+                      className="mt-1 h-3.5 w-3.5 shrink-0 cursor-pointer rounded accent-[var(--accent-color)]"
+                    />
+                    <label
+                      htmlFor="terms"
+                      className="cursor-pointer text-[12px] font-light leading-relaxed"
+                      style={{ color: 'var(--text-secondary)' }}
+                    >
+                      Al crear tu cuenta, aceptas los{' '}
+                      <a
+                        href="/legal/terms"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline underline-offset-2"
+                        style={{ color: 'var(--accent-color)' }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Terminos de Servicio
+                      </a>{' '}
+                      y la{' '}
+                      <a
+                        href="/legal/privacy"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline underline-offset-2"
+                        style={{ color: 'var(--accent-color)' }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Politica de Privacidad
+                      </a>
+                    </label>
+                  </div>
+                )}
+
                 <Button
                   type="submit"
                   size="lg"
                   className="h-11 w-full text-sm font-normal tracking-wide"
-                  disabled={submitting}
+                  disabled={submitting || (isRegister && !acceptedTerms)}
                 >
                   {submitting
                     ? (isRegister ? 'Creando cuenta...' : 'Iniciando sesión...')
@@ -243,7 +286,10 @@ export function LoginPage() {
                 {isRegister ? '¿Ya tienes cuenta?' : '¿No tienes cuenta?'}{' '}
                 <button
                   type="button"
-                  onClick={() => setIsRegister(!isRegister)}
+                  onClick={() => {
+                  setIsRegister(!isRegister)
+                  setAcceptedTerms(false)
+                }}
                   className="underline underline-offset-4 transition-colors duration-200"
                   style={{ color: 'var(--accent-color)' }}
                 >

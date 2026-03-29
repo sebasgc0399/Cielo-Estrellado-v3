@@ -41,6 +41,8 @@ export interface UserRecord {
   lastInviteAcceptDate: string | null
   videoProcessedToday: number
   lastVideoProcessDate: string | null
+  acceptedTermsAt: IsoDateString | null
+  acceptedTermsVersion: string
 }
 
 export interface SkyRecord {

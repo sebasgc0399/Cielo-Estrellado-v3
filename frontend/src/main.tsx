@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from '@/lib/auth/AuthContext'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
 import { Toaster } from '@/components/ui/sonner'
+import { TermsAcceptanceModal } from '@/components/legal/TermsAcceptanceModal'
 import '@/styles/globals.css'
 
 const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })))
@@ -44,6 +45,7 @@ function App() {
             <Route path="/shop" element={<ShopPage />} />
           </Routes>
         </Suspense>
+        <TermsAcceptanceModal />
         <Toaster />
       </AuthProvider>
     </ErrorBoundary>

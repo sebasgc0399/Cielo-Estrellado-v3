@@ -11,9 +11,11 @@ export async function userSync(req: Request, res: Response): Promise<void> {
     const decoded = await authenticateRequest(req)
     const firebaseUser = await auth.getUser(decoded.uid)
     const now = new Date().toISOString()
+    const termsVersion: string | undefined = req.body?.termsVersion
 
     const userRef = db.collection('users').doc(decoded.uid)
     const userSnap = await userRef.get()
+    const isNewUser = !userSnap.exists
 
     const welcomeTx: TransactionRecord = {
       type: 'earn',
@@ -66,6 +68,8 @@ export async function userSync(req: Request, res: Response): Promise<void> {
         lastInviteAcceptDate: null,
         videoProcessedToday: 0,
         lastVideoProcessDate: null,
+        acceptedTermsAt: termsVersion ? now : null,
+        acceptedTermsVersion: termsVersion || '',
       }
 
       await db.runTransaction(async (t) => {
@@ -76,7 +80,7 @@ export async function userSync(req: Request, res: Response): Promise<void> {
       })
     }
 
-    res.status(200).json({ status: 'ok' })
+    res.status(200).json({ status: 'ok', isNewUser })
   } catch (error) {
     logError('User sync failed', error)
     res.status(500).json({ error: 'Error interno al sincronizar usuario' })
