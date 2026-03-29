@@ -36,6 +36,15 @@ export function SkyPage() {
   const [skyConfig, setSkyConfig] = useState<SkyConfig | undefined>(undefined)
   const [creationMode, setCreationMode] = useState(false)
 
+  // Keep selectedStar in sync with live onSnapshot data
+  useEffect(() => {
+    if (!selectedStar) return
+    const updated = stars.find(s => s.starId === selectedStar.starId)
+    if (updated && updated !== selectedStar) {
+      setSelectedStar(updated)
+    }
+  }, [stars, selectedStar])
+
   // Initialize SkyConfig from personalization when sky loads
   useEffect(() => {
     if (sky) {

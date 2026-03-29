@@ -17,8 +17,12 @@ import { toast } from 'sonner'
 import { api, ApiError } from '@/lib/api/client'
 import { showStardustToast } from '@/components/economy/StardustToast'
 import { uploadStarImage } from '@/lib/firebase/storage'
+import { uploadStarVideo } from '@/lib/firebase/storage'
 import { STAR_TITLE_MAX_LENGTH, STAR_MESSAGE_MAX_LENGTH, STAR_IMAGE_MAX_SIZE_BYTES, STAR_IMAGE_ALLOWED_TYPES } from '@/domain/policies'
-import { Trash2, ImagePlus } from 'lucide-react'
+import { VIDEO_RAW_MAX_SIZE_BYTES, VIDEO_ALLOWED_TYPES } from '@/domain/policies'
+import { Trash2, ImagePlus, Video, Loader2, AlertCircle, RotateCcw } from 'lucide-react'
+import { VideoTrimmer } from './VideoTrimmer'
+import { useAuth } from '@/lib/auth/AuthContext'
 import type { StarRecord } from '@/domain/contracts'
 
 interface StarFormSheetProps {
@@ -40,6 +44,7 @@ export function StarFormSheet({
   position,
   onSuccess,
 }: StarFormSheetProps) {
+  const { user } = useAuth()
   const [title, setTitle] = useState('')
   const [message, setMessage] = useState('')
   const [year, setYear] = useState('')
@@ -47,7 +52,11 @@ export function StarFormSheet({
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [videoFile, setVideoFile] = useState<File | null>(null)
+  const [trimData, setTrimData] = useState<{ start: number; end: number } | null>(null)
+  const [showTrimmer, setShowTrimmer] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const videoInputRef = useRef<HTMLInputElement>(null)
 
   // Pre-fill on edit
   useEffect(() => {
@@ -62,6 +71,9 @@ export function StarFormSheet({
     }
     setImageFile(null)
     setImagePreview(null)
+    setVideoFile(null)
+    setTrimData(null)
+    setShowTrimmer(false)
   }, [mode, star, open])
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,11 +88,60 @@ export function StarFormSheet({
       return
     }
     setImageFile(file)
+    // Clear any video selection
+    setVideoFile(null)
+    setTrimData(null)
     const reader = new FileReader()
     reader.onload = () => {
       if (typeof reader.result === 'string') setImagePreview(reader.result)
     }
     reader.readAsDataURL(file)
+  }
+
+  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = '' // reset so same file can be re-selected
+    if (file.size > VIDEO_RAW_MAX_SIZE_BYTES) {
+      toast.error('El video no puede superar 50MB')
+      return
+    }
+    if (!VIDEO_ALLOWED_TYPES.includes(file.type)) {
+      toast.error('Solo se permiten videos MP4, WebM o MOV')
+      return
+    }
+    // Clear any image selection
+    setImageFile(null)
+    setImagePreview(null)
+    setVideoFile(file)
+    setShowTrimmer(true)
+  }
+
+  const handleTrimConfirm = (start: number, end: number) => {
+    setTrimData({ start, end })
+    setShowTrimmer(false)
+  }
+
+  const handleTrimCancel = () => {
+    setVideoFile(null)
+    setTrimData(null)
+    setShowTrimmer(false)
+  }
+
+  const handleRetry = async () => {
+    if (!star) return
+    setSubmitting(true)
+    try {
+      await api(`/api/skies/${skyId}/stars/${star.starId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ mediaStatus: null }),
+      })
+      toast.success('Puedes intentar subir el video de nuevo')
+    } catch {
+      toast.error('Error al reiniciar. Intenta de nuevo.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleSubmit = async (e: FormEvent) => {
@@ -138,6 +199,35 @@ export function StarFormSheet({
               }
             }
           }
+        } else if (videoFile && trimData && user) {
+          // Step A: PATCH mediaStatus to 'processing'
+          try {
+            await api(`/api/skies/${skyId}/stars/${res.starId}`, {
+              method: 'PATCH',
+              body: JSON.stringify({ mediaStatus: 'processing' }),
+            })
+          } catch {
+            toast.warning('Estrella creada pero no se pudo iniciar el procesamiento del video')
+            onSuccess()
+            return
+          }
+
+          // Step B: Upload raw video with trim metadata
+          try {
+            await uploadStarVideo(skyId, res.starId, videoFile, trimData.start, trimData.end, user.uid)
+            toast.success('Video subido, procesando...')
+          } catch {
+            // Rollback: reset mediaStatus
+            try {
+              await api(`/api/skies/${skyId}/stars/${res.starId}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ mediaStatus: null }),
+              })
+            } catch { /* rollback failed, cron will clean up */ }
+            toast.error('Error al subir el video. Intenta de nuevo.')
+            onSuccess()
+            return
+          }
         }
 
         toast.success('Estrella creada')
@@ -155,6 +245,30 @@ export function StarFormSheet({
         if (imageFile && !star.mediaPath) {
           const path = await uploadStarImage(skyId, star.starId, imageFile)
           body.mediaPath = path
+        } else if (videoFile && trimData && !star.mediaPath && user) {
+          // Video upload in edit mode — same two-step pattern
+          try {
+            await api(`/api/skies/${skyId}/stars/${star.starId}`, {
+              method: 'PATCH',
+              body: JSON.stringify({ mediaStatus: 'processing' }),
+            })
+          } catch {
+            toast.warning('No se pudo iniciar el procesamiento del video')
+            // Continue with other field updates
+          }
+
+          try {
+            await uploadStarVideo(skyId, star.starId, videoFile, trimData.start, trimData.end, user.uid)
+            toast.success('Video subido, procesando...')
+          } catch {
+            try {
+              await api(`/api/skies/${skyId}/stars/${star.starId}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ mediaStatus: null }),
+              })
+            } catch { /* rollback failed, cron will clean up */ }
+            toast.error('Error al subir el video. Intenta de nuevo.')
+          }
         }
 
         await api(`/api/skies/${skyId}/stars/${star.starId}`, {
@@ -196,159 +310,219 @@ export function StarFormSheet({
     }
   }
 
+  const sheetTitle = showTrimmer
+    ? 'Recortar clip'
+    : mode === 'create'
+      ? 'Nueva estrella'
+      : 'Editar estrella'
+
   return (
     <>
       <BottomSheet
         open={open}
         onOpenChange={onOpenChange}
-        title={mode === 'create' ? 'Nueva estrella' : 'Editar estrella'}
+        title={sheetTitle}
       >
-        <motion.form
-          onSubmit={handleSubmit}
-          className="space-y-5 px-2 pt-3 pb-6"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: 'easeOut' }}
-        >
-          {/* Title */}
-          <div className="space-y-1.5">
-            <Label
-              htmlFor="star-title"
-              className="text-xs font-normal tracking-wide"
-              style={{ color: 'var(--text-secondary)', fontFamily: "'Georgia', serif" }}
-            >
-              Título
-            </Label>
-            <Input
-              id="star-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Dale un nombre a tu estrella"
-              maxLength={STAR_TITLE_MAX_LENGTH}
-              required
-              autoFocus
-              className="h-10 bg-white/[0.03] border-white/[0.08] placeholder:text-white/20"
-            />
-          </div>
-
-          {/* Message */}
-          <div className="space-y-1.5">
-            <Label
-              htmlFor="star-message"
-              className="text-xs font-normal tracking-wide"
-              style={{ color: 'var(--text-secondary)', fontFamily: "'Georgia', serif" }}
-            >
-              Mensaje
-              <span className="ml-1" style={{ color: 'var(--text-muted)' }}>(opcional)</span>
-            </Label>
-            <Textarea
-              id="star-message"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Escribe un mensaje para esta estrella..."
-              maxLength={STAR_MESSAGE_MAX_LENGTH}
-              rows={3}
-              className="bg-white/[0.03] border-white/[0.08] placeholder:text-white/20"
-            />
-          </div>
-
-          {/* Year */}
-          <div className="space-y-1.5">
-            <Label
-              htmlFor="star-year"
-              className="text-xs font-normal tracking-wide"
-              style={{ color: 'var(--text-secondary)', fontFamily: "'Georgia', serif" }}
-            >
-              Año
-              <span className="ml-1" style={{ color: 'var(--text-muted)' }}>(opcional)</span>
-            </Label>
-            <Input
-              id="star-year"
-              type="number"
-              value={year}
-              onChange={(e) => setYear(e.target.value)}
-              placeholder="2024"
-              className="h-10 w-28 bg-white/[0.03] border-white/[0.08] placeholder:text-white/20"
-            />
-          </div>
-
-          {/* Position indicator */}
-          {position && mode === 'create' && (
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              Posición: ({position.x.toFixed(2)}, {position.y.toFixed(2)})
-            </p>
-          )}
-
-          {/* Image upload — edit mode only, no existing image */}
-          {(mode === 'create' || (mode === 'edit' && star && !star.mediaPath)) && (
+        {showTrimmer && videoFile ? (
+          <VideoTrimmer
+            file={videoFile}
+            onConfirm={handleTrimConfirm}
+            onCancel={handleTrimCancel}
+          />
+        ) : (
+          <motion.form
+            onSubmit={handleSubmit}
+            className="space-y-5 px-2 pt-3 pb-6"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+          >
+            {/* Title */}
             <div className="space-y-1.5">
               <Label
+                htmlFor="star-title"
                 className="text-xs font-normal tracking-wide"
-                style={{ color: 'var(--text-secondary)' }}
+                style={{ color: 'var(--text-secondary)', fontFamily: "'Georgia', serif" }}
               >
-                Imagen
-                <span className="ml-1" style={{ color: 'var(--text-muted)' }}>(opcional, max 5MB)</span>
+                Título
               </Label>
-              {imagePreview ? (
-                <div className="relative overflow-hidden rounded-lg">
-                  <img src={imagePreview} alt="Preview" className="w-full object-cover" style={{ maxHeight: 160 }} />
-                  <button
-                    type="button"
-                    onClick={() => { setImageFile(null); setImagePreview(null) }}
-                    className="absolute top-2 right-2 rounded-full bg-black/50 p-1 text-white/80 hover:text-white"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex h-20 w-full items-center justify-center gap-2 rounded-lg border border-dashed transition-colors hover:bg-white/[0.03]"
-                  style={{ borderColor: 'var(--glass-border)' }}
-                >
-                  <ImagePlus className="h-5 w-5" style={{ color: 'var(--text-muted)' }} />
-                  <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Agregar imagen</span>
-                </button>
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={handleImageSelect}
-                className="hidden"
+              <Input
+                id="star-title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Dale un nombre a tu estrella"
+                maxLength={STAR_TITLE_MAX_LENGTH}
+                required
+                autoFocus
+                className="h-10 bg-white/[0.03] border-white/[0.08] placeholder:text-white/20"
               />
             </div>
-          )}
 
-          {/* Submit */}
-          <Button
-            type="submit"
-            variant="glass"
-            size="lg"
-            className="h-11 w-full tracking-wide"
-            disabled={!title.trim() || submitting}
-          >
-            {submitting
-              ? (mode === 'create' ? 'Creando...' : 'Guardando...')
-              : (mode === 'create' ? 'Crear estrella' : 'Guardar cambios')}
-          </Button>
+            {/* Message */}
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="star-message"
+                className="text-xs font-normal tracking-wide"
+                style={{ color: 'var(--text-secondary)', fontFamily: "'Georgia', serif" }}
+              >
+                Mensaje
+                <span className="ml-1" style={{ color: 'var(--text-muted)' }}>(opcional)</span>
+              </Label>
+              <Textarea
+                id="star-message"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Escribe un mensaje para esta estrella..."
+                maxLength={STAR_MESSAGE_MAX_LENGTH}
+                rows={3}
+                className="bg-white/[0.03] border-white/[0.08] placeholder:text-white/20"
+              />
+            </div>
 
-          {/* Delete — edit mode only */}
-          {mode === 'edit' && star && (
+            {/* Year */}
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="star-year"
+                className="text-xs font-normal tracking-wide"
+                style={{ color: 'var(--text-secondary)', fontFamily: "'Georgia', serif" }}
+              >
+                Año
+                <span className="ml-1" style={{ color: 'var(--text-muted)' }}>(opcional)</span>
+              </Label>
+              <Input
+                id="star-year"
+                type="number"
+                value={year}
+                onChange={(e) => setYear(e.target.value)}
+                placeholder="2024"
+                className="h-10 w-28 bg-white/[0.03] border-white/[0.08] placeholder:text-white/20"
+              />
+            </div>
+
+            {/* Position indicator */}
+            {position && mode === 'create' && (
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                Posición: ({position.x.toFixed(2)}, {position.y.toFixed(2)})
+              </p>
+            )}
+
+            {/* Media section */}
+            {(mode === 'create' || (mode === 'edit' && star && !star.mediaPath && star.mediaStatus !== 'processing' && star.mediaStatus !== 'error')) && (
+              <div className="space-y-1.5">
+                <Label
+                  className="text-xs font-normal tracking-wide"
+                  style={{ color: 'var(--text-secondary)', fontFamily: "'Georgia', serif" }}
+                >
+                  Adjuntar
+                  <span className="ml-1" style={{ color: 'var(--text-muted)' }}>(opcional)</span>
+                </Label>
+
+                {imagePreview ? (
+                  <div className="relative overflow-hidden rounded-lg">
+                    <img src={imagePreview} alt="Preview" className="w-full object-cover" style={{ maxHeight: 160 }} />
+                    <button
+                      type="button"
+                      onClick={() => { setImageFile(null); setImagePreview(null) }}
+                      className="absolute top-2 right-2 rounded-full bg-black/50 p-1 text-white/80 hover:text-white"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : trimData && videoFile ? (
+                  <div className="flex items-center gap-3 rounded-lg p-3 bg-white/[0.03] border border-white/[0.08]">
+                    <Video className="h-5 w-5 shrink-0" style={{ color: 'var(--text-muted)' }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm truncate" style={{ color: 'var(--text-secondary)' }}>{videoFile.name}</p>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        Recorte: {trimData.start.toFixed(1)}s – {trimData.end.toFixed(1)}s ({(trimData.end - trimData.start).toFixed(1)}s)
+                      </p>
+                    </div>
+                    <button type="button" onClick={() => setShowTrimmer(true)} className="text-xs underline" style={{ color: 'var(--text-secondary)' }}>
+                      Recortar
+                    </button>
+                    <button type="button" onClick={() => { setVideoFile(null); setTrimData(null) }} className="rounded-full bg-black/50 p-1 text-white/80 hover:text-white">
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex flex-1 h-20 items-center justify-center gap-2 rounded-lg border border-dashed transition-colors hover:bg-white/[0.03]"
+                      style={{ borderColor: 'var(--glass-border)' }}
+                    >
+                      <ImagePlus className="h-5 w-5" style={{ color: 'var(--text-muted)' }} />
+                      <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Imagen</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => videoInputRef.current?.click()}
+                      className="flex flex-1 h-20 items-center justify-center gap-2 rounded-lg border border-dashed transition-colors hover:bg-white/[0.03]"
+                      style={{ borderColor: 'var(--glass-border)' }}
+                    >
+                      <Video className="h-5 w-5" style={{ color: 'var(--text-muted)' }} />
+                      <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Clip</span>
+                    </button>
+                  </div>
+                )}
+
+                <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleImageSelect} className="hidden" />
+                <input ref={videoInputRef} type="file" accept="video/mp4,video/webm,video/quicktime" onChange={handleVideoSelect} className="hidden" />
+              </div>
+            )}
+
+            {/* Processing state */}
+            {mode === 'edit' && star?.mediaStatus === 'processing' && (
+              <div className="flex items-center gap-3 rounded-lg p-3 bg-white/[0.03] border border-white/[0.08]">
+                <Loader2 className="h-5 w-5 animate-spin shrink-0" style={{ color: 'var(--text-muted)' }} />
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Procesando clip...</p>
+              </div>
+            )}
+
+            {/* Error state with retry */}
+            {mode === 'edit' && star?.mediaStatus === 'error' && (
+              <div className="flex items-center gap-3 rounded-lg p-3 bg-red-500/[0.06] border border-red-500/[0.15]">
+                <AlertCircle className="h-5 w-5 text-red-400 shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm text-red-300">Error al procesar el video</p>
+                </div>
+                <Button variant="ghost" size="sm" onClick={handleRetry} disabled={submitting} className="gap-1.5 shrink-0">
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Reintentar
+                </Button>
+              </div>
+            )}
+
+            {/* Submit */}
             <Button
-              type="button"
-              variant="glass-danger"
+              type="submit"
+              variant="glass"
               size="lg"
-              className="h-11 w-full gap-2 tracking-wide"
-              onClick={() => setConfirmDelete(true)}
-              disabled={submitting}
+              className="h-11 w-full tracking-wide"
+              disabled={!title.trim() || submitting}
             >
-              <Trash2 className="h-4 w-4" />
-              Eliminar estrella
+              {submitting
+                ? (mode === 'create' ? 'Creando...' : 'Guardando...')
+                : (mode === 'create' ? 'Crear estrella' : 'Guardar cambios')}
             </Button>
-          )}
-        </motion.form>
+
+            {/* Delete — edit mode only */}
+            {mode === 'edit' && star && (
+              <Button
+                type="button"
+                variant="glass-danger"
+                size="lg"
+                className="h-11 w-full gap-2 tracking-wide"
+                onClick={() => setConfirmDelete(true)}
+                disabled={submitting}
+              >
+                <Trash2 className="h-4 w-4" />
+                Eliminar estrella
+              </Button>
+            )}
+          </motion.form>
+        )}
       </BottomSheet>
 
       {/* Delete confirmation dialog */}
