@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, lazy, Suspense } from 'react'
+import { useState, useCallback, useEffect, useMemo, lazy, Suspense } from 'react'
 import { useParams, useNavigate } from 'react-router'
 import { useRequireAuth } from '@/lib/auth/useRequireAuth'
 import { useSkyData } from '@/hooks/useSkyData'
@@ -18,6 +18,8 @@ import { toast } from 'sonner'
 import { ArrowLeft } from 'lucide-react'
 import type { SkyConfig } from '@/engine/SkyEngine'
 import { getThemeById } from '@/domain/themes'
+import { useTour } from '@/hooks/useTour'
+import { skyEditorSteps } from '@/tours/skyEditorTour'
 
 export function SkyPage() {
   const { skyId } = useParams<{ skyId: string }>()
@@ -36,6 +38,25 @@ export function SkyPage() {
   const [collaboratorsOpen, setCollaboratorsOpen] = useState(false)
   const [skyConfig, setSkyConfig] = useState<SkyConfig | undefined>(undefined)
   const [creationMode, setCreationMode] = useState(false)
+
+  // Tour: filter steps based on role
+  const tourSteps = useMemo(
+    () => {
+      const canEditTour = role === 'owner' || role === 'editor'
+      return skyEditorSteps.filter(step => {
+        if (step.element === '[aria-label="Crear estrella"]') return canEditTour
+        return true
+      })
+    },
+    [role]
+  )
+
+  const { isActive: tourActive } = useTour({
+    tourId: 'sky-editor',
+    steps: tourSteps,
+    enabled: !!sky && !!role,
+    delay: 800,
+  })
 
   // Keep selectedStar in sync with live onSnapshot data
   useEffect(() => {
@@ -233,6 +254,7 @@ export function SkyPage() {
       <FloatingToolbar
         role={role}
         creationMode={creationMode}
+        forceVisible={tourActive}
         onAddStar={handleAddStar}
         onCollaborators={() => setCollaboratorsOpen(true)}
         onSettings={() => setSettingsOpen(true)}

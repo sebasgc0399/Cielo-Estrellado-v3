@@ -24,6 +24,8 @@ export interface AuthUser {
   email: string | null
   displayName: string | null
   photoURL: string | null
+  createdAt: string | null
+  providers: string[]
 }
 
 interface AuthContextValue {
@@ -43,6 +45,8 @@ function toAuthUser(firebaseUser: User): AuthUser {
     email: firebaseUser.email,
     displayName: firebaseUser.displayName,
     photoURL: firebaseUser.photoURL,
+    createdAt: firebaseUser.metadata.creationTime ?? null,
+    providers: firebaseUser.providerData.map((p) => p.providerId),
   }
 }
 

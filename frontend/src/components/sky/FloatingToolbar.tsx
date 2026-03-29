@@ -6,6 +6,7 @@ import type { MemberRole } from '@/domain/contracts'
 interface FloatingToolbarProps {
   role: MemberRole
   creationMode?: boolean
+  forceVisible?: boolean
   onAddStar: () => void
   onCollaborators: () => void
   onSettings: () => void
@@ -17,6 +18,7 @@ const AUTO_HIDE_MS = 3000
 export function FloatingToolbar({
   role,
   creationMode,
+  forceVisible: forceVisibleProp,
   onAddStar,
   onCollaborators,
   onSettings,
@@ -49,13 +51,13 @@ export function FloatingToolbar({
     }
   }, [resetTimer])
 
-  // Keep toolbar visible during creation mode
+  // Keep toolbar visible during creation mode or when forced
   useEffect(() => {
-    if (creationMode) {
+    if (forceVisibleProp || creationMode) {
       setVisible(true)
       if (timerRef.current) clearTimeout(timerRef.current)
     }
-  }, [creationMode])
+  }, [forceVisibleProp, creationMode])
 
   const canEdit = role === 'owner' || role === 'editor'
 

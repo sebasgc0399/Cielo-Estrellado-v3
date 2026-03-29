@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { useRequireAuth } from '@/lib/auth/useRequireAuth'
 import { useUserEconomy } from '@/hooks/useUserEconomy'
@@ -34,6 +34,8 @@ import { PurchaseDialog } from '@/components/economy/PurchaseDialog'
 import type { SkyRecord, MemberRole } from '@/domain/contracts'
 import { SKY_TITLE_MAX_LENGTH } from '@/domain/policies'
 import { getShopItem } from '@/domain/shopCatalog'
+import { useTour } from '@/hooks/useTour'
+import { skiesWelcomeSteps } from '@/tours/skiesWelcomeTour'
 
 type SkyEntry = { skyId: string; sky: SkyRecord; role: MemberRole }
 type SkiesResponse = { skies: SkyEntry[] }
@@ -78,6 +80,23 @@ export function SkiesPage() {
   const [deleteEntry, setDeleteEntry] = useState<SkyEntry | null>(null)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [deleting, setDeleting] = useState(false)
+
+  // Tour: filter steps for elements that exist in DOM
+  const tourSteps = useMemo(
+    () => skiesWelcomeSteps.filter(step => {
+      if (step.element === '[data-tour="streak-indicator"]') {
+        return document.querySelector('[data-tour="streak-indicator"]') !== null
+      }
+      return true
+    }),
+    [economy?.loginStreak]
+  )
+
+  const { isActive: tourActive } = useTour({
+    tourId: 'skies-welcome',
+    steps: tourSteps,
+    enabled: economy !== null && economy.loginStreak <= 1 && !showRewards,
+  })
 
   const dismissOnboarding = useCallback(() => {
     setOnboardingDismissed(true)
@@ -261,10 +280,12 @@ export function SkiesPage() {
               <div>
                 {economy ? (
                   economy.loginStreak > 0 ? (
-                    <StreakIndicator
-                      currentStreak={economy.loginStreak}
-                      previousStreak={economy.previousStreak}
-                    />
+                    <div data-tour="streak-indicator">
+                      <StreakIndicator
+                        currentStreak={economy.loginStreak}
+                        previousStreak={economy.previousStreak}
+                      />
+                    </div>
                   ) : null
                 ) : (
                   <div className="h-5 w-32 animate-pulse rounded-full" style={{ background: 'rgba(255,255,255,0.04)' }} />
@@ -275,7 +296,9 @@ export function SkiesPage() {
             <div className="flex items-center gap-2">
               {economy ? (
                 <BlurFade delay={0.28} duration={0.4}>
-                  <StardustBalance balance={economy.stardust} compact onClick={handleHistoryOpen} />
+                  <div data-tour="stardust-balance">
+                    <StardustBalance balance={economy.stardust} compact onClick={handleHistoryOpen} />
+                  </div>
                 </BlurFade>
               ) : (
                 <div className="h-7 w-16 animate-pulse rounded-full" style={{ background: 'rgba(255,255,255,0.04)' }} />
@@ -289,6 +312,7 @@ export function SkiesPage() {
                     border: '1px solid rgba(255, 255, 255, 0.08)',
                   }}
                   aria-label="Tienda"
+                  data-tour="store-button"
                 >
                   <Store className="h-3.5 w-3.5" style={{ color: 'var(--text-secondary)' }} />
                   <span
@@ -305,7 +329,7 @@ export function SkiesPage() {
 
         {/* Content */}
         <main className="flex-1 overflow-y-auto px-5 pt-4 pb-28 sm:px-8">
-          {economy && !onboardingDismissed && economy.stardust <= 100 && economy.loginStreak <= 1 && (
+          {economy && !onboardingDismissed && !tourActive && economy.stardust <= 100 && economy.loginStreak <= 1 && (
             <StardustOnboarding onDismiss={dismissOnboarding} />
           )}
 
@@ -413,6 +437,7 @@ export function SkiesPage() {
                   background="rgba(140, 180, 255, 0.1)"
                   className="gap-2 text-sm font-light tracking-wide"
                   onClick={() => setSheetOpen(true)}
+                  data-tour="create-sky-fab"
                 >
                   <Plus className="h-4 w-4" />
                   Crear mi primer cielo
@@ -497,6 +522,7 @@ export function SkiesPage() {
                 boxShadow: '0 0 20px rgba(140, 180, 255, 0.15), 0 4px 12px rgba(0, 0, 0, 0.3)',
               }}
               aria-label="Crear nuevo cielo"
+              data-tour="create-sky-fab"
             >
               <span
                 className="text-2xl"

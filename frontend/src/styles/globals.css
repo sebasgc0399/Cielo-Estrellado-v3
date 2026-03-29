@@ -167,6 +167,60 @@
     animation: fade-in-up 0.4s ease-out 0.24s both;
 }
 
+/* driver.js tour popover — glassmorphism dark theme */
+.cielo-tour-popover {
+    background: rgba(15, 20, 35, 0.92) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 16px !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 64px rgba(140, 180, 255, 0.04) !important;
+    color: var(--text-primary) !important;
+}
+
+.cielo-tour-popover .driver-popover-title {
+    font-family: 'Georgia', 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
+    font-weight: 300;
+    letter-spacing: 0.03em;
+    color: var(--text-primary) !important;
+}
+
+.cielo-tour-popover .driver-popover-description {
+    font-size: 0.85rem;
+    font-weight: 300;
+    line-height: 1.6;
+    color: var(--text-secondary) !important;
+}
+
+.cielo-tour-popover .driver-popover-progress-text {
+    color: var(--text-muted) !important;
+}
+
+.cielo-tour-popover button.driver-popover-next-btn,
+.cielo-tour-popover button.driver-popover-prev-btn,
+.cielo-tour-popover button.driver-popover-done-btn {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: var(--text-primary) !important;
+    border-radius: 8px !important;
+    font-size: 0.8rem;
+    padding: 6px 14px;
+    transition: background 0.15s;
+}
+
+.cielo-tour-popover button.driver-popover-next-btn:hover,
+.cielo-tour-popover button.driver-popover-done-btn:hover {
+    background: rgba(140, 180, 255, 0.12) !important;
+}
+
+.cielo-tour-popover .driver-popover-close-btn {
+    color: var(--text-muted) !important;
+}
+
+.cielo-tour-popover .driver-popover-arrow {
+    border-color: rgba(15, 20, 35, 0.92) !important;
+}
+
 @layer base {
     * {
         @apply border-border outline-ring/50;

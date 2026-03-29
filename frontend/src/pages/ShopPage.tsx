@@ -17,6 +17,8 @@ import { ArrowLeft } from 'lucide-react'
 import { showStardustToast } from '@/components/economy/StardustToast'
 import type { ShopItem } from '@/domain/shopCatalog'
 import type { PaymentStatus } from '@/domain/contracts'
+import { useTour } from '@/hooks/useTour'
+import { shopIntroSteps } from '@/tours/shopIntroTour'
 
 interface PaymentStatusResponse {
   status: PaymentStatus
@@ -47,6 +49,12 @@ export function ShopPage() {
 
   const [purchaseItem, setPurchaseItem] = useState<ShopItem | null>(null)
   const [showBuySheet, setShowBuySheet] = useState(false)
+
+  useTour({
+    tourId: 'shop-intro',
+    steps: shopIntroSteps,
+    enabled: !economyLoading && !economyError,
+  })
 
   useEffect(() => {
     const paymentRef = searchParams.get('payment')
@@ -170,7 +178,9 @@ export function ShopPage() {
         </BlurFade>
 
         <BlurFade delay={0.15} duration={0.4}>
-          <StardustBalance balance={economy.stardust} compact />
+          <div data-tour="shop-balance">
+            <StardustBalance balance={economy.stardust} compact />
+          </div>
         </BlurFade>
       </header>
 
@@ -185,7 +195,7 @@ export function ShopPage() {
           </p>
         </BlurFade>
 
-        <div className="mx-auto grid max-w-2xl grid-cols-2 gap-3 md:grid-cols-3">
+        <div className="mx-auto grid max-w-2xl grid-cols-2 gap-3 md:grid-cols-3" data-tour="theme-grid">
           {themeItems.map((item, i) => {
             const theme = item.themeId ? getThemeDefinition(item.themeId) : null
             if (!theme) return null
@@ -212,6 +222,7 @@ export function ShopPage() {
           <button
             onClick={() => setShowBuySheet(true)}
             className="mt-6 flex w-full max-w-2xl mx-auto items-center gap-4 rounded-xl p-4 text-left transition-transform duration-200 hover:scale-[1.01]"
+            data-tour="buy-stardust-cta"
             style={{
               background: 'linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,165,0,0.04))',
               border: '1px solid rgba(255,215,0,0.15)',
