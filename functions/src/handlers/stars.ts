@@ -291,7 +291,10 @@ export async function updateStar(req: Request, res: Response): Promise<void> {
     // Safe as long as these values are rendered as text content, not via
     // dangerouslySetInnerHTML or as href/src attributes.
     // See audits/05-validacion-inputs.md M1.
-    const rawTitle = typeof body.title === 'string' ? body.title.trim() : ''
+    const titleProvided = 'title' in body
+    const rawTitle = titleProvided
+      ? (typeof body.title === 'string' ? body.title.trim() : '')
+      : star.title
     if (!rawTitle) {
       res.status(400).json({ error: 'El título es obligatorio' })
       return
@@ -302,7 +305,10 @@ export async function updateStar(req: Request, res: Response): Promise<void> {
     }
 
     // No HTML sanitization — same rationale as rawTitle above. See audits/05-validacion-inputs.md M1.
-    const rawMessage = typeof body.message === 'string' ? body.message.trim() : ''
+    const messageProvided = 'message' in body
+    const rawMessage = messageProvided
+      ? (typeof body.message === 'string' ? body.message.trim() : '')
+      : (star.message ?? '')
     if (rawMessage.length > STAR_MESSAGE_MAX_LENGTH) {
       res.status(400).json({ error: `El mensaje no puede superar ${STAR_MESSAGE_MAX_LENGTH} caracteres` })
       return
