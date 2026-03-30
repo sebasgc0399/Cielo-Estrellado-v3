@@ -80,7 +80,11 @@ export async function userSync(req: Request, res: Response): Promise<void> {
       })
     }
 
-    res.status(200).json({ status: 'ok', isNewUser })
+    const needsTerms = isNewUser
+      ? !termsVersion
+      : !(userSnap.data() as UserRecord).acceptedTermsAt
+
+    res.status(200).json({ status: 'ok', isNewUser, needsTerms })
   } catch (error) {
     logError('User sync failed', error)
     res.status(500).json({ error: 'Error interno al sincronizar usuario' })

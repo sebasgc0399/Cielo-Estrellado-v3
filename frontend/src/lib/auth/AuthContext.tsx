@@ -32,6 +32,7 @@ export interface AuthUser {
 interface SyncResult {
   status: string
   isNewUser?: boolean
+  needsTerms?: boolean
 }
 
 interface AuthContextValue {
@@ -77,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         api<SyncResult>('/api/userSync', options)
           .then((result) => {
-            if (result?.isNewUser && !tv) {
+            if (result?.needsTerms && !tv) {
               setNeedsTerms(true)
             }
           })
