@@ -11,10 +11,12 @@ import { getEconomy, getTransactions } from './handlers/economy.js'
 import { purchase, getCatalog } from './handlers/shop.js'
 import { createPayment, wompiWebhook, getPaymentStatus } from './handlers/payments.js'
 import { acceptTerms } from './handlers/acceptTerms.js'
+import { deleteAccount } from './handlers/deleteAccount.js'
 
 const router = createRouter([
   { method: 'POST', pattern: '/userSync', handler: userSync },
   { method: 'POST', pattern: '/acceptTerms', handler: acceptTerms },
+  { method: 'POST', pattern: '/user/deleteAccount', handler: deleteAccount },
   { method: 'GET', pattern: '/user/economy', handler: getEconomy },
   { method: 'GET', pattern: '/user/transactions', handler: getTransactions },
   { method: 'GET', pattern: '/shop/catalog', handler: getCatalog },

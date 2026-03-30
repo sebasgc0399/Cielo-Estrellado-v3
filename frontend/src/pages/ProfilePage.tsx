@@ -27,6 +27,7 @@ import {
   Mail,
 } from 'lucide-react'
 import { getInitials } from '@/lib/getInitials'
+import { api } from '@/lib/api/client'
 import { toast } from 'sonner'
 
 function GoogleIcon({ className }: { className?: string }) {
@@ -75,12 +76,22 @@ export function ProfilePage() {
     navigate('/login', { replace: true })
   }
 
-  const handleDeleteRequest = () => {
-    setDeleteDialogOpen(false)
-    setConfirmInput('')
-    toast.info(
-      'Para eliminar tu cuenta, contacta a sebasgc0399@gmail.com. Procesaremos tu solicitud en maximo 15 dias habiles.',
-    )
+  const [deleting, setDeleting] = useState(false)
+
+  const handleDeleteRequest = async () => {
+    setDeleting(true)
+    try {
+      await api('/api/user/deleteAccount', { method: 'POST' })
+      setDeleteDialogOpen(false)
+      setConfirmInput('')
+      await signOut()
+      navigate('/login', { replace: true })
+      toast.success('Tu cuenta ha sido eliminada')
+    } catch {
+      toast.error('Error al eliminar la cuenta. Intenta de nuevo.')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   const displayName = user.displayName || user.email?.split('@')[0] || 'Explorador'
@@ -350,10 +361,10 @@ export function ProfilePage() {
             <Button
               variant="glass-danger"
               className="text-sm font-light"
-              disabled={confirmInput !== CONFIRMATION_WORD}
+              disabled={confirmInput !== CONFIRMATION_WORD || deleting}
               onClick={handleDeleteRequest}
             >
-              Eliminar cuenta permanentemente
+              {deleting ? 'Eliminando...' : 'Eliminar cuenta permanentemente'}
             </Button>
           </DialogFooter>
         </DialogContent>

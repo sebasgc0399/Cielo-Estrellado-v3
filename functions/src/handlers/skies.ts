@@ -254,6 +254,89 @@ export async function getSky(req: Request, res: Response): Promise<void> {
 }
 
 const BATCH_LIMIT = 500
+const MEDIA_DELETE_BATCH_SIZE = 10
+
+type BatchOp =
+  | { type: 'delete'; ref: DocumentReference }
+  | { type: 'update'; ref: DocumentReference; data: Record<string, unknown> }
+
+export async function executeBatchOps(ops: BatchOp[]): Promise<void> {
+  for (let i = 0; i < ops.length; i += BATCH_LIMIT) {
+    const batch = db.batch()
+    const chunk = ops.slice(i, i + BATCH_LIMIT)
+    for (const op of chunk) {
+      if (op.type === 'delete') {
+        batch.delete(op.ref)
+      } else {
+        batch.update(op.ref, op.data)
+      }
+    }
+    await batch.commit()
+  }
+}
+
+export async function deleteMediaFiles(paths: string[]): Promise<void> {
+  for (let i = 0; i < paths.length; i += MEDIA_DELETE_BATCH_SIZE) {
+    const chunk = paths.slice(i, i + MEDIA_DELETE_BATCH_SIZE)
+    await Promise.allSettled(
+      chunk.map(path =>
+        storage.bucket().file(path).delete().then(() => {}).catch(() => {
+          console.warn(`Failed to delete storage file: ${path}`)
+        })
+      )
+    )
+  }
+}
+
+export async function deleteSkyData(skyId: string): Promise<void> {
+  const skyRef = db.collection('skies').doc(skyId)
+
+  const [starsSnap, membersSnap, invitesSnap] = await Promise.all([
+    skyRef.collection('stars').get(),
+    skyRef.collection('members').get(),
+    db.collection('invites')
+      .where('skyId', '==', skyId)
+      .where('status', '==', 'pending')
+      .get(),
+  ])
+
+  const allOps: BatchOp[] = []
+
+  for (const doc of starsSnap.docs) {
+    allOps.push({ type: 'delete', ref: doc.ref })
+  }
+  for (const doc of membersSnap.docs) {
+    allOps.push({ type: 'delete', ref: doc.ref })
+  }
+  for (const doc of invitesSnap.docs) {
+    allOps.push({ type: 'update', ref: doc.ref, data: { status: 'revoked' } })
+  }
+  allOps.push({ type: 'delete', ref: skyRef })
+
+  await executeBatchOps(allOps)
+
+  // Clean up media files from Storage (best-effort)
+  const mediaFilePaths: string[] = []
+  for (const doc of starsSnap.docs) {
+    const starData = doc.data()
+    if (starData.mediaPath) mediaFilePaths.push(starData.mediaPath as string)
+    if (starData.thumbnailPath) mediaFilePaths.push(starData.thumbnailPath as string)
+    if (starData.imagePath && !starData.mediaPath) {
+      mediaFilePaths.push(starData.imagePath as string)
+    }
+  }
+
+  try {
+    const [tempFiles] = await storage.bucket().getFiles({ prefix: `temp/${skyId}/` })
+    for (const file of tempFiles) {
+      mediaFilePaths.push(file.name)
+    }
+  } catch {
+    console.warn(`Failed to list temp files for sky: ${skyId}`)
+  }
+
+  await deleteMediaFiles(mediaFilePaths)
+}
 
 export async function deleteSky(req: Request, res: Response): Promise<void> {
   try {
@@ -271,80 +354,7 @@ export async function deleteSky(req: Request, res: Response): Promise<void> {
       return
     }
 
-    const skyRef = db.collection('skies').doc(skyId)
-
-    // Collect all docs to delete/update
-    const [starsSnap, membersSnap, invitesSnap] = await Promise.all([
-      skyRef.collection('stars').get(),
-      skyRef.collection('members').get(),
-      db.collection('invites')
-        .where('skyId', '==', skyId)
-        .where('status', '==', 'pending')
-        .get(),
-    ])
-
-    // Process in batches of 500 (Firestore limit)
-    const allOps: Array<{ type: 'delete'; ref: DocumentReference } | { type: 'update'; ref: DocumentReference; data: Record<string, unknown> }> = []
-
-    for (const doc of starsSnap.docs) {
-      allOps.push({ type: 'delete', ref: doc.ref })
-    }
-    for (const doc of membersSnap.docs) {
-      allOps.push({ type: 'delete', ref: doc.ref })
-    }
-    for (const doc of invitesSnap.docs) {
-      allOps.push({ type: 'update', ref: doc.ref, data: { status: 'revoked' } })
-    }
-    // Delete the sky doc itself last
-    allOps.push({ type: 'delete', ref: skyRef })
-
-    for (let i = 0; i < allOps.length; i += BATCH_LIMIT) {
-      const batch = db.batch()
-      const chunk = allOps.slice(i, i + BATCH_LIMIT)
-      for (const op of chunk) {
-        if (op.type === 'delete') {
-          batch.delete(op.ref)
-        } else {
-          batch.update(op.ref, op.data)
-        }
-      }
-      await batch.commit()
-    }
-
-    // Clean up media files from Storage (batched, best-effort)
-    const MEDIA_DELETE_BATCH_SIZE = 10
-    const mediaFilePaths: string[] = []
-    for (const doc of starsSnap.docs) {
-      const starData = doc.data()
-      if (starData.mediaPath) mediaFilePaths.push(starData.mediaPath as string)
-      if (starData.thumbnailPath) mediaFilePaths.push(starData.thumbnailPath as string)
-      // Defensive: pre-migration docs may still have imagePath
-      if (starData.imagePath && !starData.mediaPath) {
-        mediaFilePaths.push(starData.imagePath as string)
-      }
-    }
-
-    // Clean up temp files for this sky
-    try {
-      const [tempFiles] = await storage.bucket().getFiles({ prefix: `temp/${skyId}/` })
-      for (const file of tempFiles) {
-        mediaFilePaths.push(file.name)
-      }
-    } catch {
-      console.warn(`Failed to list temp files for sky: ${skyId}`)
-    }
-
-    for (let i = 0; i < mediaFilePaths.length; i += MEDIA_DELETE_BATCH_SIZE) {
-      const chunk = mediaFilePaths.slice(i, i + MEDIA_DELETE_BATCH_SIZE)
-      await Promise.allSettled(
-        chunk.map(path =>
-          storage.bucket().file(path).delete().then(() => {}).catch(() => {
-            console.warn(`Failed to delete storage file: ${path}`)
-          })
-        )
-      )
-    }
-
+    await deleteSkyData(skyId)
     res.status(200).json({ ok: true })
   } catch (error) {
     logError('deleteSky failed', error)
